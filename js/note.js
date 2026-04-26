@@ -1,4 +1,4 @@
-import { API_BASE_URL, fetchJson, getAccessToken, setTokens, clearTokens } from "./auth.js";
+import { API_BASE_URL, fetchJson, getAccessToken, setTokens, clearTokens, setTokensFromUrlParams } from "./auth.js";
 
 const noteGrid = document.getElementById("noteGrid");
 const createNoteCard = document.getElementById("createNoteCard");
@@ -163,7 +163,6 @@ function setupLoginModal() {
   const loginLink = document.querySelector(".top-menu a");
   const loginForm = document.getElementById("loginForm");
   const googleLoginButton = document.querySelector(".signup-links button:nth-child(1)");
-  const ajouLoginButton = document.querySelector(".signup-links button:nth-child(2)");
 
   if (loginLink) {
     loginLink.addEventListener("click", async (e) => {
@@ -220,34 +219,8 @@ function setupLoginModal() {
   }
 
   if (googleLoginButton) {
-    googleLoginButton.addEventListener("click", async () => {
-      const email = window.prompt("Gmail 주소를 입력하세요.", "");
-      if (!email) {
-        return;
-      }
-
-      try {
-        await doLogin({ email, provider: "google" });
-      } catch (error) {
-        console.error(error);
-        window.alert("Google 로그인에 실패했습니다.");
-      }
-    });
-  }
-
-  if (ajouLoginButton) {
-    ajouLoginButton.addEventListener("click", async () => {
-      const email = window.prompt("아주대학교 메일 주소를 입력하세요.", "");
-      if (!email) {
-        return;
-      }
-
-      try {
-        await doLogin({ email, provider: "ajou" });
-      } catch (error) {
-        console.error(error);
-        window.alert("아주대학교 메일 로그인에 실패했습니다.");
-      }
+    googleLoginButton.addEventListener("click", () => {
+      window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google`;
     });
   }
 }
@@ -255,6 +228,11 @@ function setupLoginModal() {
 async function initNotePage() {
   if (!noteGrid || !createNoteCard) {
     return;
+  }
+
+  const restored = setTokensFromUrlParams();
+  if (restored) {
+    setNotice("Google 로그인이 완료되었습니다.");
   }
 
   updateLoginLink();
