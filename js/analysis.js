@@ -17,6 +17,7 @@ import {
   renderEmptyResult,
 } from "./analysis-render.js";
 import { setupDragAndDrop, bindInputListeners } from "./analysis-chat.js";
+import { initPracticeMode, openPracticeModal } from "./practice-mode.js";
 
 const params = new URLSearchParams(window.location.search);
 const noteId = params.get("note_id");
@@ -32,6 +33,7 @@ const elements = {
   filePicker: document.getElementById("filePicker"),
   attachFileButton: document.getElementById("attachFileButton"),
   runAnalysisButton: document.getElementById("runAnalysisButton"),
+  practiceModeButton: document.getElementById("practiceModeButton"),
   contentCoverageElement: document.getElementById("contentCoverageScore"),
   deliveryStabilityElement: document.getElementById("deliveryStabilityScore"),
   pacingScoreElement: document.getElementById("pacingScore"),
@@ -48,6 +50,7 @@ let audioUploadId = null;
 let analysisId = null;
 let pollingTimer = null;
 let documentPreviewUrl = null;
+let latestAnalysisScores = null;
 
 function revokeDocumentPreviewUrl() {
   if (!documentPreviewUrl) {
@@ -129,6 +132,10 @@ async function fetchAnalysisResult() {
     updateNotice,
     updateAnalysisChatStatus,
     setButtonDisabled,
+    onComplete: (scores) => {
+      setButtonDisabled(elements.practiceModeButton, false);
+      latestAnalysisScores = scores;
+    },
   });
 }
 
@@ -180,6 +187,12 @@ async function runAnalysis() {
 function initAnalysisPage() {
   renderEmptyResult(elements);
   renderDocumentPreview(elements.documentPreviewElement, null, null);
+
+  initPracticeMode();
+  setButtonDisabled(elements.practiceModeButton, true);
+  elements.practiceModeButton?.addEventListener("click", () => {
+    if (latestAnalysisScores) openPracticeModal(latestAnalysisScores);
+  });
 
   bindInputListeners({
     documentInput: elements.documentInput,

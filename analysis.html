@@ -80,11 +80,68 @@
           <ul id="strengthsList">
             <li>강점 데이터가 아직 없습니다.</li>
           </ul>
-          <button type="button">연습모드</button>
+          <button type="button" id="practiceModeButton" disabled>연습모드</button>
         </div>
       </section>
 
     </main>
+  </div>
+
+  <!-- 연습 모드 모달 -->
+  <div class="practice-modal-backdrop" id="practiceModeModal">
+    <div class="practice-modal">
+      <button class="practice-modal-close" id="closePracticeModal">×</button>
+      <h2 class="practice-modal-title">연습 모드</h2>
+
+      <div class="practice-score-rings">
+        <div class="practice-ring-item">
+          <canvas id="practiceRingContent" width="140" height="140"></canvas>
+          <p class="practice-ring-label">내용 커버리지</p>
+        </div>
+        <div class="practice-ring-item">
+          <canvas id="practiceRingDelivery" width="140" height="140"></canvas>
+          <p class="practice-ring-label">전달 안정성</p>
+        </div>
+        <div class="practice-ring-item">
+          <canvas id="practiceRingPacing" width="140" height="140"></canvas>
+          <p class="practice-ring-label">발표 속도</p>
+        </div>
+      </div>
+
+      <div class="practice-legend">
+        <span class="legend-target">■ 목표 점수</span>
+        <span class="legend-live">■ 현재 (실시간)</span>
+      </div>
+
+      <div class="practice-wave-container">
+        <canvas id="practiceWaveCanvas"></canvas>
+      </div>
+
+      <div class="practice-meters">
+        <div class="practice-meter-row">
+          <span class="practice-meter-label">볼륨</span>
+          <div class="practice-meter-track">
+            <div class="practice-meter-fill" id="practiceVolumeFill"></div>
+          </div>
+          <span class="practice-meter-value" id="practiceVolumeValue">0%</span>
+        </div>
+        <div class="practice-meter-row">
+          <span class="practice-meter-label">피치</span>
+          <div class="practice-meter-track">
+            <div class="practice-meter-fill" id="practicePitchFill"></div>
+          </div>
+          <span class="practice-meter-value" id="practicePitchValue">-</span>
+        </div>
+      </div>
+
+      <div class="practice-mic-area">
+        <button class="practice-mic-button" id="practiceMicButton">
+          <span class="mic-icon">🎤</span>
+          <span class="mic-label" id="practiceMicLabel">마이크 시작</span>
+        </button>
+        <p class="practice-mic-status" id="practiceMicStatus">마이크 버튼을 눌러 연습을 시작하세요</p>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./js/analysis.js"></script>

@@ -9,7 +9,7 @@ export async function fetchNoteDetail(noteId) {
   return await fetchJson(`${API_BASE_URL}/notes/${noteId}`);
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, setButtonDisabled }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, setButtonDisabled, onComplete }) {
   if (!analysisId) {
     return;
   }
@@ -32,6 +32,14 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     renderSections(elements.sectionsListElement, result.sections);
     updateAnalysisChatStatus("분석이 완료되었습니다. 결과를 확인하세요.");
     updateNotice("분석 결과를 불러왔습니다.");
+
+    if (onComplete) {
+      onComplete({
+        contentCoverage: result.scores?.content_coverage ?? null,
+        deliveryStability: result.scores?.delivery_stability ?? null,
+        pacingScore: result.scores?.pacing_score ?? null,
+      });
+    }
   } catch (error) {
     console.error(error);
     updateNotice("분석 결과를 불러오는 중 오류가 발생했습니다.");

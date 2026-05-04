@@ -20,7 +20,7 @@
     </header>
 
     <section class="notice-bar">
-      <p>노트 목록을 불러오는 중입니다.</p>
+      <p>ver 0.0.1 테스트중</p>
     </section>
 
     <section class="view-toggle">
@@ -53,6 +53,21 @@
       </div>
 
       <p class="signup-text">Sign Up</p>
+    </div>
+  </div>
+
+  <!-- 노트 생성 모달 -->
+  <div class="modal-backdrop" id="createNoteModalBackdrop">
+    <div class="modal-content create-note-modal">
+      <button class="modal-close-button" id="closeCreateNoteModalButton">×</button>
+      <h1>새 노트 만들기</h1>
+      <p>제목을 입력하고 확인을 눌러주세요. 설명은 선택 사항입니다.</p>
+      <input type="text" id="createNoteTitleInput" placeholder="새 노트 제목을 입력하세요." />
+      <textarea id="createNoteDescriptionInput" placeholder="노트 설명을 입력하세요. (선택)" rows="4"></textarea>
+      <div class="modal-actions">
+        <button type="button" id="cancelCreateNoteButton">취소</button>
+        <button type="button" id="confirmCreateNoteButton">확인</button>
+      </div>
     </div>
   </div>
 

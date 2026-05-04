@@ -1,11 +1,40 @@
 /* analysis */
 .analysis-page {
+  position: relative;
   width: 100%;
   min-height: 100vh;
   padding: 3vh 2.6vw;
+  overflow: hidden;
+}
+
+.analysis-page::before,
+.analysis-page::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(10px);
+}
+
+.analysis-page::before {
+  width: 360px;
+  height: 360px;
+  top: -90px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(111, 201, 255, 0.4) 0%, rgba(111, 201, 255, 0) 72%);
+}
+
+.analysis-page::after {
+  width: 420px;
+  height: 420px;
+  bottom: -180px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(184, 229, 255, 0.42) 0%, rgba(184, 229, 255, 0) 70%);
 }
 
 .analysis-layout {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 2vw;
   align-items: stretch;
@@ -39,15 +68,20 @@
 .slide-preview {
   flex: 0 0 30vh;
   min-height: 260px;
-  background: #2f2f2f;
-  color: white;
+  position: relative;
+  background:
+    linear-gradient(140deg, rgba(8, 23, 49, 0.96), rgba(15, 46, 78, 0.88)),
+    radial-gradient(circle at top right, rgba(83, 184, 255, 0.32), transparent 32%);
+  color: #eef8ff;
   border-radius: 28px;
+  border: 1px solid rgba(110, 198, 255, 0.28);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 24px;
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(56, 120, 192, 0.16);
 }
 
 .slide-preview > * {
@@ -55,14 +89,31 @@
   transform-origin: center;
 }
 
+.slide-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .feedback-box,
 .chat-header,
 .chat-body,
 .score-card {
-  background: #fff;
-  border: 1px solid #d9d9d9;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 255, 0.95));
+  border: 1px solid rgba(142, 199, 255, 0.34);
   border-radius: 28px;
   padding: 20px;
+  box-shadow:
+    0 18px 38px rgba(120, 166, 215, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
 }
 
 .feedback-box p,
@@ -97,7 +148,23 @@
   min-height: 64px;
   display: flex;
   align-items: center;
-  font-weight: 600;
+  justify-content: space-between;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0f2852;
+}
+
+.chat-header::after {
+  content: "LIVE ANALYSIS";
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #2d73d8;
+  background: rgba(113, 178, 255, 0.12);
+  border: 1px solid rgba(113, 178, 255, 0.2);
 }
 
 .chat-body {
@@ -107,12 +174,15 @@
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(238, 247, 255, 0.92)),
+    radial-gradient(circle at top, rgba(157, 215, 255, 0.22), transparent 38%);
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .chat-body.drag-over {
   border-color: #5da8ff;
-  background-color: #f0f6ff;
+  background-color: #eef7ff;
 }
 
 .attached-files {
@@ -127,10 +197,11 @@
   gap: 10px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: #f9fbff;
-  border: none;
+  background: linear-gradient(180deg, #ffffff, #eef6ff);
+  border: 1px solid rgba(113, 178, 255, 0.22);
   color: #1e3a72;
   font-size: 14px;
+  box-shadow: 0 10px 18px rgba(111, 160, 210, 0.12);
 }
 
 .attached-file-chip span {
@@ -152,20 +223,26 @@
 }
 
 .chat-message {
-  background: #efefef;
-  padding: 12px 14px;
-  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #eef5ff);
+  border: 1px solid rgba(166, 206, 244, 0.42);
+  padding: 13px 15px;
+  border-radius: 18px 18px 18px 6px;
   display: inline-block;
   max-width: 82%;
   line-height: 1.45;
+  color: #18314f;
+  box-shadow: 0 12px 24px rgba(114, 161, 214, 0.12);
   animation: slideUp 0.3s ease-out;
 }
 
 .chat-message.user {
-  background: #5da8ff;
+  background: linear-gradient(135deg, #3b8dff, #6fd0ff);
+  border-color: rgba(76, 147, 255, 0.45);
   color: #fff;
   margin-left: auto;
   text-align: left;
+  border-radius: 18px 18px 6px 18px;
+  box-shadow: 0 16px 26px rgba(76, 147, 255, 0.24);
 }
 
 .chat-message.user .attachment-preview {
@@ -180,8 +257,8 @@
 }
 
 .status-message {
-  background: rgba(93, 168, 255, 0.14);
-  border: 1px solid rgba(93, 168, 255, 0.3);
+  background: linear-gradient(90deg, rgba(93, 168, 255, 0.16), rgba(111, 211, 255, 0.12));
+  border: 1px solid rgba(93, 168, 255, 0.28);
   color: #1a3b72;
   max-width: 100%;
   width: fit-content;
@@ -231,8 +308,11 @@
   gap: 8px;
   padding: 12px 14px;
   border-radius: 28px;
-  border: 1px solid #d9d9d9;
-  background: #fff;
+  border: 1px solid rgba(142, 199, 255, 0.34);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 250, 255, 0.96));
+  box-shadow:
+    0 16px 32px rgba(120, 166, 215, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -258,10 +338,18 @@
   flex: 1;
   min-width: 0;
   height: 46px;
-  border: 1px solid #cdcdcd;
+  border: 1px solid rgba(176, 205, 233, 0.8);
   border-radius: 999px;
   padding: 0 16px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1c3050;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-input-box input[type="text"]:focus {
+  border-color: #72b2ff;
+  box-shadow: 0 0 0 4px rgba(114, 178, 255, 0.14);
 }
 
 .chat-input-box button {
@@ -269,13 +357,22 @@
   height: 46px;
   border: none;
   border-radius: 50%;
-  background: #5da8ff;
+  background: linear-gradient(135deg, #4f95ff, #79d8ff);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(79, 149, 255, 0.28);
   cursor: pointer;
   flex: 0 0 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.chat-input-box button:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 16px 24px rgba(79, 149, 255, 0.34);
+  filter: saturate(1.08);
 }
 
 #attachFileButton {
@@ -306,9 +403,19 @@
   margin-top: 14px;
   padding: 10px 18px;
   border: none;
-  border-radius: 18px;
-  background: #7fb3ff;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4f95ff, #78d8ff);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  box-shadow: 0 14px 24px rgba(92, 154, 255, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.practice-card button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 28px rgba(92, 154, 255, 0.3);
 }
 
 #analysisSummary {
@@ -356,18 +463,22 @@
 
 .back-button {
   padding: 10px 20px;
-  border: 1px solid #d9d9d9;
-  border-radius: 20px;
-  background: #fff;
+  border: 1px solid rgba(142, 199, 255, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(12px);
   cursor: pointer;
   font-size: 14px;
-  color: #111;
+  font-weight: 600;
+  color: #14335d;
+  box-shadow: 0 12px 24px rgba(126, 173, 218, 0.14);
   transition: all 0.2s ease;
 }
 
 .back-button:hover {
-  background: #f3f3f3;
-  border-color: #999;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(102, 174, 255, 0.64);
+  transform: translateY(-1px);
 }
 
 .document-preview-empty {
@@ -380,13 +491,331 @@
 }
 
 .document-preview-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
 .document-preview-subtext {
   font-size: 12px;
-  color: #ccc;
+  color: rgba(233, 243, 255, 0.76);
   margin-bottom: 0;
+}
+
+.document-preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.document-preview-card {
+  position: relative;
+  width: 100%;
+  padding: 28px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(129, 206, 255, 0.1));
+  border: 1px solid rgba(138, 212, 255, 0.28);
+  text-align: left;
+  z-index: 1;
+}
+
+.document-preview-badge {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #a7ddff;
+  border: 1px solid rgba(167, 221, 255, 0.34);
+  background: rgba(10, 20, 38, 0.3);
+}
+
+.document-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.document-preview-filename {
+  font-size: 19px;
+  font-weight: 700;
+  color: #f4fbff;
+  margin: 0;
+}
+
+.document-preview-info,
+.document-preview-card .document-preview-subtext {
+  color: rgba(230, 240, 255, 0.76);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Practice Mode Modal ─────────────────────────────────────── */
+
+.practice-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.practice-modal-backdrop.active {
+  display: flex;
+}
+
+.practice-modal {
+  position: relative;
+  width: min(880px, 95vw);
+  max-height: 92vh;
+  background: linear-gradient(150deg, #0d1129 0%, #080c1e 55%, #0a1520 100%);
+  border: 1px solid rgba(93, 168, 255, 0.18);
+  border-radius: 28px;
+  padding: 36px 32px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-shadow:
+    0 0 60px rgba(93, 168, 255, 0.1),
+    0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.practice-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(111, 210, 255, 0.22), transparent 24%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: auto, 26px 26px, 26px 26px;
+  opacity: 0.45;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.practice-modal > * {
+  position: relative;
+  z-index: 1;
+}
+
+.practice-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.practice-modal-close:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
+.practice-modal-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+/* Score rings */
+.practice-score-rings {
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+  flex-wrap: wrap;
+}
+
+.practice-ring-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.practice-ring-item canvas {
+  display: block;
+}
+
+.practice-ring-label {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Legend */
+.practice-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.legend-target,
+.legend-live {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.legend-target::first-letter {
+  color: #5da8ff;
+}
+
+.legend-live::first-letter {
+  color: #4aff8c;
+}
+
+/* Waveform */
+.practice-wave-container {
+  width: 100%;
+  height: 160px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #080c1e;
+  border: 1px solid rgba(93, 168, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.practice-wave-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Meters */
+.practice-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.practice-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.practice-meter-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.practice-meter-track {
+  flex: 1;
+  height: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.practice-meter-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4a6cff, #5da8ff);
+  transition: width 0.04s linear, background 0.25s ease;
+}
+
+.practice-meter-value {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  font-family: monospace;
+  width: 58px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Mic button */
+.practice-mic-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+.practice-mic-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid rgba(93, 168, 255, 0.35);
+  background: rgba(93, 168, 255, 0.08);
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.practice-mic-button:hover {
+  background: rgba(93, 168, 255, 0.18);
+  border-color: #5da8ff;
+  box-shadow: 0 0 20px rgba(93, 168, 255, 0.28);
+}
+
+.practice-mic-button.active {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: #ff5050;
+  box-shadow: 0 0 22px rgba(255, 80, 80, 0.28);
+  animation: micPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 80, 80, 0.28); }
+  50%       { box-shadow: 0 0 38px rgba(255, 80, 80, 0.55); }
+}
+
+.mic-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.mic-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.practice-mic-status {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+
+/* practice button in right panel — disabled look */
+#practiceModeButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#practiceModeButton:not(:disabled) {
+  background: #5da8ff;
+  box-shadow: 0 2px 12px rgba(93, 168, 255, 0.35);
 }

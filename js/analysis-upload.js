@@ -1,4 +1,4 @@
-import { API_BASE_URL, fetchJson } from "./auth.js";
+import { API_BASE_URL, authFetch, fetchJson } from "./auth.js";
 
 export { API_BASE_URL, fetchJson };
 
@@ -43,6 +43,31 @@ async function createUploadRecord(noteId, file, kind) {
     body: JSON.stringify(buildPresignPayload(noteId, file, kind)),
   });
 
+  const uploadUrl = presignResult.upload_url;
+  if (!uploadUrl) {
+    throw new Error("업로드 URL을 가져오지 못했습니다.");
+  }
+
+  const uploadFetch = uploadUrl.startsWith(API_BASE_URL) ? authFetch : fetch;
+  let uploadResponse;
+
+  try {
+    uploadResponse = await uploadFetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+  } catch (error) {
+    throw new Error(`S3 파일 전송 요청이 브라우저에서 차단되었습니다: ${error.message}`);
+  }
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    throw new Error(`파일 업로드에 실패했습니다: ${uploadResponse.status} ${errorText}`);
+  }
+
   await completeUpload(presignResult.upload_id);
   return presignResult.upload_id;
 }
@@ -59,8 +84,8 @@ async function handleDocumentUpload(noteId, file, setNotice) {
     return await createUploadRecord(noteId, file, "document");
   } catch (error) {
     console.error(error);
-    setNotice("문서 업로드 처리 중 오류가 발생했습니다.");
-    window.alert("문서 업로드 처리에 실패했습니다.");
+    setNotice(error.message || "문서 업로드 처리 중 오류가 발생했습니다.");
+    window.alert(error.message || "문서 업로드 처리에 실패했습니다.");
     return null;
   }
 }
@@ -77,8 +102,8 @@ async function handleAudioUpload(noteId, file, setNotice) {
     return await createUploadRecord(noteId, file, "audio");
   } catch (error) {
     console.error(error);
-    setNotice("음성 업로드 처리 중 오류가 발생했습니다.");
-    window.alert("음성 업로드 처리에 실패했습니다.");
+    setNotice(error.message || "음성 업로드 처리 중 오류가 발생했습니다.");
+    window.alert(error.message || "음성 업로드 처리에 실패했습니다.");
     return null;
   }
 }
