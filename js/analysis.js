@@ -23,6 +23,20 @@ const params = new URLSearchParams(window.location.search);
 const noteId = params.get("note_id");
 
 const elements = {
+  layoutElement: document.querySelector(".analysis-layout"),
+  leftPanelElement: document.querySelector(".left-panel"),
+  centerPanelElement: document.querySelector(".center-panel"),
+  rightPanelElement: document.querySelector(".right-panel"),
+  slidePreviewElement: document.querySelector(".slide-preview"),
+  transcriptBoxElement: document.querySelector(".transcript-box"),
+  rightPrimaryCardElement: document.querySelector(".score-card-primary"),
+  rightSecondaryCardElement: document.querySelector(".score-card-secondary"),
+  rightPracticeCardElement: document.querySelector(".practice-card"),
+  leftCenterResizer: document.getElementById("leftCenterResizer"),
+  centerRightResizer: document.getElementById("centerRightResizer"),
+  leftVerticalResizer: document.getElementById("leftVerticalResizer"),
+  rightTopResizer: document.getElementById("rightTopResizer"),
+  rightBottomResizer: document.getElementById("rightBottomResizer"),
   noteTitleElement: document.getElementById("noteTitle"),
   noteDescriptionElement: document.getElementById("noteDescription"),
   noticeText: document.querySelector(".notice-bar p"),
@@ -51,6 +65,148 @@ let analysisId = null;
 let pollingTimer = null;
 let documentPreviewUrl = null;
 let latestAnalysisScores = null;
+
+function setPanelWidth(panel, widthPx) {
+  if (!panel) {
+    return;
+  }
+
+  panel.style.flex = `0 0 ${Math.round(widthPx)}px`;
+}
+
+function setPanelHeight(panel, heightPx) {
+  if (!panel) {
+    return;
+  }
+
+  panel.style.flex = `0 0 ${Math.round(heightPx)}px`;
+}
+
+function setupPanelResizer(resizer, leftPanel, rightPanel) {
+  if (!resizer || !leftPanel || !rightPanel || !elements.layoutElement) {
+    return;
+  }
+
+  const minPanelWidth = 280;
+  let startX = 0;
+  let startLeftWidth = 0;
+  let startRightWidth = 0;
+
+  function onPointerMove(event) {
+    const deltaX = event.clientX - startX;
+    const nextLeftWidth = startLeftWidth + deltaX;
+    const nextRightWidth = startRightWidth - deltaX;
+
+    if (nextLeftWidth < minPanelWidth || nextRightWidth < minPanelWidth) {
+      return;
+    }
+
+    setPanelWidth(leftPanel, nextLeftWidth);
+    setPanelWidth(rightPanel, nextRightWidth);
+  }
+
+  function stopResize() {
+    resizer.classList.remove("is-active");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", stopResize);
+  }
+
+  resizer.addEventListener("pointerdown", (event) => {
+    if (window.innerWidth <= 1200) {
+      return;
+    }
+
+    startX = event.clientX;
+    startLeftWidth = leftPanel.getBoundingClientRect().width;
+    startRightWidth = rightPanel.getBoundingClientRect().width;
+
+    resizer.classList.add("is-active");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopResize);
+  });
+}
+
+function setupVerticalResizer(resizer, topPanel, bottomPanel) {
+  if (!resizer || !topPanel || !bottomPanel) {
+    return;
+  }
+
+  const minPanelHeight = 140;
+  let startY = 0;
+  let startTopHeight = 0;
+  let startBottomHeight = 0;
+
+  function onPointerMove(event) {
+    const deltaY = event.clientY - startY;
+    const nextTopHeight = startTopHeight + deltaY;
+    const nextBottomHeight = startBottomHeight - deltaY;
+
+    if (nextTopHeight < minPanelHeight || nextBottomHeight < minPanelHeight) {
+      return;
+    }
+
+    setPanelHeight(topPanel, nextTopHeight);
+    setPanelHeight(bottomPanel, nextBottomHeight);
+  }
+
+  function stopResize() {
+    resizer.classList.remove("is-active");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", stopResize);
+  }
+
+  resizer.addEventListener("pointerdown", (event) => {
+    if (window.innerWidth <= 1200) {
+      return;
+    }
+
+    startY = event.clientY;
+    startTopHeight = topPanel.getBoundingClientRect().height;
+    startBottomHeight = bottomPanel.getBoundingClientRect().height;
+
+    resizer.classList.add("is-active");
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopResize);
+  });
+}
+
+function initPanelResizers() {
+  setupPanelResizer(
+    elements.leftCenterResizer,
+    elements.leftPanelElement,
+    elements.centerPanelElement
+  );
+  setupPanelResizer(
+    elements.centerRightResizer,
+    elements.centerPanelElement,
+    elements.rightPanelElement
+  );
+  setupVerticalResizer(
+    elements.leftVerticalResizer,
+    elements.slidePreviewElement,
+    elements.transcriptBoxElement
+  );
+  setupVerticalResizer(
+    elements.rightTopResizer,
+    elements.rightPrimaryCardElement,
+    elements.rightSecondaryCardElement
+  );
+  setupVerticalResizer(
+    elements.rightBottomResizer,
+    elements.rightSecondaryCardElement,
+    elements.rightPracticeCardElement
+  );
+}
 
 function revokeDocumentPreviewUrl() {
   if (!documentPreviewUrl) {
@@ -187,6 +343,7 @@ async function runAnalysis() {
 function initAnalysisPage() {
   renderEmptyResult(elements);
   renderDocumentPreview(elements.documentPreviewElement, null, null);
+  initPanelResizers();
 
   initPracticeMode();
   setButtonDisabled(elements.practiceModeButton, true);

@@ -22,6 +22,14 @@
           </div>
         </div>
 
+        <div
+          class="panel-resizer panel-resizer-horizontal"
+          id="leftVerticalResizer"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="왼쪽 패널 상하 크기 조절"
+        ></div>
+
         <div class="feedback-box transcript-box">
           <p>발표 재료 / STT 영역</p>
           <p id="noteDescription">노트 설명을 불러오는 중입니다.</p>
@@ -31,6 +39,14 @@
           </ul>
         </div>
       </section>
+
+      <div
+        class="panel-resizer"
+        id="leftCenterResizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="왼쪽과 가운데 패널 크기 조절"
+      ></div>
 
       <section class="center-panel">
         <div class="chat-header">AI 분석 설명 도우미</div>
@@ -58,20 +74,44 @@
         </div>
       </section>
 
+      <div
+        class="panel-resizer"
+        id="centerRightResizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="가운데와 오른쪽 패널 크기 조절"
+      ></div>
+
       <section class="right-panel">
-        <div class="score-card">
+        <div class="score-card score-card-primary">
           <p>3개 핵심 점수</p>
           <p>내용 커버리지: <span id="contentCoverageScore">-</span></p>
           <p>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
           <p>발표 속도: <span id="pacingScore">-</span></p>
         </div>
 
-        <div class="score-card">
+        <div
+          class="panel-resizer panel-resizer-horizontal"
+          id="rightTopResizer"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="오른쪽 상단 패널 크기 조절"
+        ></div>
+
+        <div class="score-card score-card-secondary">
           <p>가장 부족한 부분 하이라이트</p>
           <ul id="improvementsList">
             <li>개선점 데이터가 아직 없습니다.</li>
           </ul>
         </div>
+
+        <div
+          class="panel-resizer panel-resizer-horizontal"
+          id="rightBottomResizer"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="오른쪽 하단 패널 크기 조절"
+        ></div>
 
         <div class="score-card practice-card">
           <p>전체 리포트 요약</p>

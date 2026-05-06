@@ -3,12 +3,28 @@ import { API_BASE_URL, fetchJson, getAccessToken, setTokens, clearTokens, setTok
 const noteGrid = document.getElementById("noteGrid");
 const createNoteCard = document.getElementById("createNoteCard");
 const noticeText = document.querySelector(".notice-bar p");
+const guestHomeSection = document.getElementById("guestHomeSection");
+const memberWorkspaceSection = document.getElementById("memberWorkspaceSection");
 let currentView = "grid";
 let currentNotes = [];
 
 function setNotice(message) {
   if (noticeText) {
     noticeText.textContent = message;
+  }
+}
+
+function setWorkspaceVisibility(isLoggedIn) {
+  guestHomeSection?.classList.toggle("is-hidden", isLoggedIn);
+  memberWorkspaceSection?.classList.toggle("is-hidden", !isLoggedIn);
+
+  const loginLink = document.getElementById("loginMenuLink");
+  const logoutButton = document.getElementById("logoutButton");
+  if (loginLink) {
+    loginLink.classList.toggle("is-hidden", isLoggedIn);
+  }
+  if (logoutButton) {
+    logoutButton.classList.toggle("is-hidden", !isLoggedIn);
   }
 }
 
@@ -89,39 +105,69 @@ function createNoteCardElement(note) {
   return card;
 }
 
-function renderNotes(notes) {
+function renderNotes(notes, animate = false) {
   currentNotes = notes;
+  if (!noteGrid) {
+    return;
+  }
   const existingCards = noteGrid.querySelectorAll(".note-card:not(.add-card)");
   existingCards.forEach((card) => card.remove());
 
-  notes.forEach((note) => {
+  notes.forEach((note, index) => {
     const card = createNoteCardElement(note);
+    if (animate) {
+      card.classList.add("card-entering");
+      card.style.animationDelay = `${index * 48}ms`;
+    }
     noteGrid.appendChild(card);
   });
 }
 
 function updateViewMode() {
-  if (!noteGrid) {
+  if (!noteGrid || !memberWorkspaceSection || memberWorkspaceSection.classList.contains("is-hidden")) {
     return;
   }
 
+  const addCardElement = document.getElementById("createNoteCard");
+
   if (currentView === "list") {
     noteGrid.classList.add("list-view");
+    if (addCardElement) {
+      addCardElement.classList.add("list-card");
+    }
   } else {
     noteGrid.classList.remove("list-view");
+    if (addCardElement) {
+      addCardElement.classList.remove("list-card");
+    }
   }
+}
+
+function switchView(newView) {
+  if (currentView === newView) return;
+
+  noteGrid.classList.add("is-switching");
+
+  setTimeout(() => {
+    currentView = newView;
+    updateViewMode();
+    renderNotes(currentNotes, true);
+    noteGrid.classList.remove("is-switching");
+  }, 180);
 }
 
 async function fetchNotes() {
   if (!getAccessToken()) {
+    setWorkspaceVisibility(false);
     setNotice("로그인이 필요합니다. 로그인 후 이용해주세요.");
     return;
   }
 
+  setWorkspaceVisibility(true);
   setNotice("노트 목록을 불러오는 중입니다.");
 
   const data = await fetchJson(`${API_BASE_URL}/notes`);
-  renderNotes(data.items ?? []);
+  renderNotes(data.items ?? [], true);
 
   if ((data.total ?? 0) === 0) {
     setNotice("아직 생성된 노트가 없습니다. 새 노트를 추가해보세요.");
@@ -157,6 +203,7 @@ function closeCreateNoteModal() {
 
 async function createNote() {
   if (!getAccessToken()) {
+    openLoginModal();
     setNotice("로그인이 필요합니다. 노트를 생성하려면 로그인해주세요.");
     return;
   }
@@ -204,17 +251,27 @@ async function submitCreateNote() {
   }
 }
 
-function updateLoginLink() {
-  const loginLink = document.querySelector(".top-menu a");
-  if (!loginLink) {
-    return;
+function openLogoutConfirmModal() {
+  const logoutConfirmModalBackdrop = document.getElementById("logoutConfirmModalBackdrop");
+  if (logoutConfirmModalBackdrop) {
+    logoutConfirmModalBackdrop.classList.add("active");
   }
+}
 
-  if (getAccessToken()) {
-    loginLink.textContent = "로그아웃";
-  } else {
-    loginLink.textContent = "로그인";
+function closeLogoutConfirmModal() {
+  const logoutConfirmModalBackdrop = document.getElementById("logoutConfirmModalBackdrop");
+  if (logoutConfirmModalBackdrop) {
+    logoutConfirmModalBackdrop.classList.remove("active");
   }
+}
+
+async function doLogout() {
+  clearTokens();
+  setWorkspaceVisibility(false);
+  currentNotes = [];
+  renderNotes([]);
+  setNotice("로그아웃 되었습니다.");
+  closeLogoutConfirmModal();
 }
 
 async function doLogin(payload) {
@@ -236,21 +293,15 @@ async function doLogin(payload) {
 function setupLoginModal() {
   const loginModal = document.getElementById("loginModalBackdrop");
   const closeButton = document.getElementById("closeLoginModalButton");
-  const loginLink = document.querySelector(".top-menu a");
+  const loginLink = document.getElementById("loginMenuLink");
   const loginForm = document.getElementById("loginForm");
   const googleLoginButton = document.querySelector(".signup-links button:nth-child(1)");
+  const heroLoginButton = document.getElementById("heroLoginButton");
+  const heroGoogleButton = document.getElementById("heroGoogleButton");
 
   if (loginLink) {
     loginLink.addEventListener("click", async (e) => {
       e.preventDefault();
-
-      if (getAccessToken()) {
-        clearTokens();
-        updateLoginLink();
-        setNotice("로그아웃 되었습니다.");
-        return;
-      }
-
       openLoginModal();
     });
   }
@@ -299,6 +350,11 @@ function setupLoginModal() {
       window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google`;
     });
   }
+
+  heroLoginButton?.addEventListener("click", openLoginModal);
+  heroGoogleButton?.addEventListener("click", () => {
+    window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google`;
+  });
 }
 
 function setupCreateNoteModal() {
@@ -328,27 +384,122 @@ function setupCreateNoteModal() {
   }
 }
 
+function setupLogoutModal() {
+  const logoutButton = document.getElementById("logoutButton");
+  const logoutConfirmModal = document.getElementById("logoutConfirmModalBackdrop");
+  const cancelLogoutButton = document.getElementById("cancelLogoutButton");
+  const confirmLogoutButton = document.getElementById("confirmLogoutButton");
+
+  if (logoutButton) {
+    logoutButton.addEventListener("click", openLogoutConfirmModal);
+  }
+
+  if (logoutConfirmModal) {
+    logoutConfirmModal.addEventListener("click", (e) => {
+      if (e.target === logoutConfirmModal) {
+        closeLogoutConfirmModal();
+      }
+    });
+  }
+
+  if (cancelLogoutButton) {
+    cancelLogoutButton.addEventListener("click", closeLogoutConfirmModal);
+  }
+
+  if (confirmLogoutButton) {
+    confirmLogoutButton.addEventListener("click", doLogout);
+  }
+}
+
 function setupViewToggle() {
   const gridButton = document.querySelector(".view-toggle button:nth-child(1)");
   const listButton = document.querySelector(".view-toggle button:nth-child(2)");
 
   if (gridButton && listButton) {
     gridButton.addEventListener("click", () => {
-      currentView = "grid";
       gridButton.classList.add("active");
       listButton.classList.remove("active");
-      updateViewMode();
-      renderNotes(currentNotes);
+      switchView("grid");
     });
 
     listButton.addEventListener("click", () => {
-      currentView = "list";
       listButton.classList.add("active");
       gridButton.classList.remove("active");
-      updateViewMode();
-      renderNotes(currentNotes);
+      switchView("list");
     });
   }
+}
+
+function initBanner() {
+  const banner = document.getElementById("landingBanner");
+  if (!banner) return;
+
+  const track = document.getElementById("bannerTrack");
+  const progressFill = document.getElementById("bannerProgressFill");
+  const dots = banner.querySelectorAll(".banner-dot");
+  const TOTAL = dots.length;
+  const INTERVAL = 5000;
+
+  let current = 0;
+  let timer = null;
+
+  function goTo(index) {
+    current = ((index % TOTAL) + TOTAL) % TOTAL;
+    if (track) track.style.transform = `translateX(-${current * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle("active", i === current));
+    resetProgress();
+  }
+
+  function resetProgress() {
+    if (!progressFill) return;
+    progressFill.style.transition = "none";
+    progressFill.style.width = "0%";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressFill.style.transition = `width ${INTERVAL}ms linear`;
+        progressFill.style.width = "100%";
+      });
+    });
+  }
+
+  function startTimer() {
+    clearInterval(timer);
+    timer = setInterval(() => goTo(current + 1), INTERVAL);
+  }
+
+  banner.querySelector("#bannerNext")?.addEventListener("click", () => {
+    goTo(current + 1);
+    startTimer();
+  });
+
+  banner.querySelector("#bannerPrev")?.addEventListener("click", () => {
+    goTo(current - 1);
+    startTimer();
+  });
+
+  dots.forEach((dot) => {
+    dot.addEventListener("click", () => {
+      goTo(Number(dot.dataset.index));
+      startTimer();
+    });
+  });
+
+  banner.addEventListener("mouseenter", () => {
+    clearInterval(timer);
+    if (progressFill) {
+      const pct = (parseFloat(progressFill.style.width) || 0);
+      progressFill.style.transition = "none";
+      progressFill.style.width = pct + "%";
+    }
+  });
+
+  banner.addEventListener("mouseleave", () => {
+    goTo(current);
+    startTimer();
+  });
+
+  goTo(0);
+  startTimer();
 }
 
 async function initNotePage() {
@@ -361,14 +512,21 @@ async function initNotePage() {
     setNotice("Google 로그인이 완료되었습니다.");
   }
 
-  updateLoginLink();
+  initBanner();
+  setWorkspaceVisibility(Boolean(getAccessToken()));
   createNoteCard.addEventListener("click", createNote);
   setupLoginModal();
+  setupLogoutModal();
   setupViewToggle();
   setupCreateNoteModal();
   const gridButton = document.querySelector(".view-toggle button:nth-child(1)");
   gridButton?.classList.add("active");
   updateViewMode();
+
+  if (!getAccessToken()) {
+    setNotice("로그인 후 내 노트 목록과 새 노트 추가 기능을 사용할 수 있습니다.");
+    return;
+  }
 
   try {
     await fetchNotes();

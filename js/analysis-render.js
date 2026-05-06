@@ -152,7 +152,7 @@ export function renderDocumentPreview(container, file, previewUrl) {
   const isPdf = lowerName.endsWith(".pdf") || file.type === "application/pdf";
 
   if (isPdf && previewUrl) {
-    container.className = "";
+    container.className = "document-preview-panel pdf-preview";
     container.innerHTML = "";
 
     const frame = document.createElement("iframe");
