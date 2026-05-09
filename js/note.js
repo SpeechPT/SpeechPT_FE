@@ -318,9 +318,19 @@ function setupLoginModal() {
     });
   }
 
+  function isGoogleEmail(email) {
+    return typeof email === "string" && email.trim().toLowerCase().endsWith("@gmail.com");
+  }
+
   async function submitLoginForm() {
     const email = loginForm.querySelector("input[type='email']").value;
     const password = loginForm.querySelector("input[type='password']").value;
+
+    if (isGoogleEmail(email)) {
+      const encodedEmail = encodeURIComponent(email.trim().toLowerCase());
+      window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google&login_hint=${encodedEmail}&auto=true`;
+      return;
+    }
 
     try {
       await doLogin({ email, password, provider: "local" });

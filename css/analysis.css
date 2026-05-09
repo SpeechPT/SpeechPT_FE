@@ -241,6 +241,47 @@
   flex: 1 1 auto;
   min-height: 42vh;
   min-width: 0;
+  overflow-y: auto;
+}
+
+.transcript-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7eaacc;
+  margin-bottom: 8px !important;
+}
+
+.transcript-text-area {
+  background: rgba(120, 170, 220, 0.08);
+  border: 1px solid rgba(120, 180, 230, 0.3);
+  border-radius: 14px;
+  padding: 16px 18px;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+
+.transcript-placeholder {
+  color: #8fa9c1;
+  font-size: 13px;
+  line-height: 2;
+  margin: 0 !important;
+}
+
+.transcript-body {
+  font-size: 14px;
+  line-height: 2.1;
+  color: #2c3e50;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 !important;
+}
+
+
+.note-description-text {
+  font-size: 12px;
+  color: #8a9ab0;
 }
 
 .transcript-box ul,
@@ -579,6 +620,14 @@
   justify-content: flex-start;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.analysis-header-title {
+  margin-left: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #14335d;
+  opacity: 0.8;
 }
 
 .back-button {

@@ -1,7 +1,9 @@
 import {
   fetchNoteDetail as fetchNoteDetailService,
   fetchAnalysisResult as fetchAnalysisResultService,
+  fetchLatestAnalysisResult as fetchLatestAnalysisResultService,
   pollAnalysisStatus as pollAnalysisStatusService,
+  requestChatReply as requestChatReplyService,
   runAnalysis as runAnalysisService,
 } from "./analysis-service.js";
 import {
@@ -18,6 +20,7 @@ import {
 } from "./analysis-render.js";
 import { setupDragAndDrop, bindInputListeners } from "./analysis-chat.js";
 import { initPracticeMode, openPracticeModal } from "./practice-mode.js";
+import { API_BASE_URL, fetchJson } from "./analysis-upload.js";
 
 const params = new URLSearchParams(window.location.search);
 const noteId = params.get("note_id");
@@ -39,6 +42,7 @@ const elements = {
   rightBottomResizer: document.getElementById("rightBottomResizer"),
   noteTitleElement: document.getElementById("noteTitle"),
   noteDescriptionElement: document.getElementById("noteDescription"),
+  transcriptTextElement: document.getElementById("transcriptText"),
   noticeText: document.querySelector(".notice-bar p"),
   documentInput: document.getElementById("documentFile"),
   audioInput: document.getElementById("audioFile"),
@@ -55,6 +59,7 @@ const elements = {
   strengthsListElement: document.getElementById("strengthsList"),
   improvementsListElement: document.getElementById("improvementsList"),
   sectionsListElement: document.getElementById("sectionsList"),
+  chatDropzoneElement: document.getElementById("chatDropzone"),
   chatBodyElement: document.querySelector(".chat-body"),
 };
 
@@ -65,6 +70,47 @@ let analysisId = null;
 let pollingTimer = null;
 let documentPreviewUrl = null;
 let latestAnalysisScores = null;
+let chatSessionId = null;
+
+async function saveChatMessageToServer(role, content) {
+  if (!chatSessionId) return;
+  try {
+    await fetchJson(`${API_BASE_URL}/chat-sessions/${chatSessionId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content }),
+    });
+  } catch (err) {
+    console.error("채팅 메시지 저장 실패:", err);
+  }
+}
+
+function addMessageToChatAndPersist(chatBodyElement, text, isUser = false, attachments = []) {
+  addMessageToChat(chatBodyElement, text, isUser, attachments);
+  const role = isUser ? "user" : "assistant";
+  const content = JSON.stringify({ text, attachments });
+  saveChatMessageToServer(role, content);
+}
+
+async function initChatSession() {
+  if (!noteId) return;
+  try {
+    const data = await fetchJson(`${API_BASE_URL}/notes/${noteId}/chat`);
+    chatSessionId = data.session_id;
+    data.messages.forEach(({ role, content }) => {
+      let text = content;
+      let attachments = [];
+      try {
+        const parsed = JSON.parse(content);
+        text = parsed.text ?? content;
+        attachments = parsed.attachments ?? [];
+      } catch (_) {}
+      addMessageToChat(elements.chatBodyElement, text, role === "user", attachments);
+    });
+  } catch (err) {
+    console.error("채팅 세션 로드 실패:", err);
+  }
+}
 
 function setPanelWidth(panel, widthPx) {
   if (!panel) {
@@ -239,6 +285,55 @@ function updateNotice(message) {
   setNotice(elements.noticeText, message);
 }
 
+function scrollChatInputIntoView() {
+  const dropzone = elements.chatDropzoneElement;
+  if (!dropzone) {
+    return;
+  }
+
+  dropzone.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function getStageLabel(stage) {
+  const labels = {
+    queued: "큐에 등록",
+    loading_model: "모델 로딩",
+    transcribing: "음성 변환",
+    postprocessing: "후처리",
+    finished: "완료",
+  };
+
+  if (!stage) {
+    return "분석 준비";
+  }
+
+  return labels[stage] || stage;
+}
+
+function getAnimatedDots(progress) {
+  if (typeof progress !== "number" || Number.isNaN(progress)) {
+    return "...";
+  }
+  const dotCount = ((Math.floor(progress / 10) % 3) + 1);
+  return ".".repeat(dotCount);
+}
+
+function getAnalysisStatusText(stage, progress) {
+  if (stage === "finished" || progress === 100) {
+    return "모델 분석이 완료되었습니다. 결과를 확인해주세요.";
+  }
+
+  const stageLabel = getStageLabel(stage);
+  const dots = getAnimatedDots(progress);
+  const progressText = typeof progress === "number" ? `${Math.min(Math.max(progress, 0), 100)}%` : "진행률 계산 중";
+  return `모델이 ${stageLabel} 중${dots} 현재 ${progressText} 진행 중입니다.`;
+}
+
+function updateAnalysisProgress(stage, progress) {
+  const statusText = getAnalysisStatusText(stage, progress);
+  updateAnalysisChatStatus(statusText);
+}
+
 function updateAnalysisChatStatus(text) {
   analysisStatusMessage = updateAnalysisStatusMessage(
     elements.chatBodyElement,
@@ -279,6 +374,7 @@ function onFileChanged(kind, file) {
   }
 
   renderAttachedFileChip(elements.attachedFilesContainer, kind, file, removeAttachedFile);
+  scrollChatInputIntoView();
 }
 
 async function fetchAnalysisResult() {
@@ -287,6 +383,7 @@ async function fetchAnalysisResult() {
     elements,
     updateNotice,
     updateAnalysisChatStatus,
+    updateAnalysisProgress,
     setButtonDisabled,
     onComplete: (scores) => {
       setButtonDisabled(elements.practiceModeButton, false);
@@ -301,6 +398,7 @@ async function pollAnalysisStatus() {
     pollingTimer,
     elements,
     updateAnalysisChatStatus,
+    updateAnalysisProgress,
     updateNotice,
     setButtonDisabled,
     fetchAnalysisResult,
@@ -316,6 +414,7 @@ async function runAnalysis() {
     audioUploadId,
     updateNotice,
     updateAnalysisChatStatus,
+    updateAnalysisProgress,
     setButtonDisabled,
     elements,
   });
@@ -338,6 +437,23 @@ async function runAnalysis() {
   await pollAnalysisStatus();
 
   return true;
+}
+
+async function submitChatQuestion(message) {
+  addMessageToChat(elements.chatBodyElement, message, true, []);
+
+  try {
+    const reply = await requestChatReplyService(chatSessionId, message);
+    addMessageToChat(elements.chatBodyElement, reply.answer, false, []);
+  } catch (error) {
+    console.error(error);
+    addMessageToChat(
+      elements.chatBodyElement,
+      "답변을 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      false,
+      []
+    );
+  }
 }
 
 function initAnalysisPage() {
@@ -373,8 +489,9 @@ function initAnalysisPage() {
       window.location.href = "./note.html";
     },
     onFileChanged,
+    onTextSubmitted: submitChatQuestion,
     getSelectedAttachments: () => getSelectedAttachments(elements.documentInput, elements.audioInput),
-    addMessageToChat,
+    addMessageToChat: addMessageToChatAndPersist,
     chatBodyElement: elements.chatBodyElement,
   });
 
@@ -390,14 +507,30 @@ function initAnalysisPage() {
 
   fetchNoteDetailService(noteId)
     .then((note) => {
-      elements.noteTitleElement.textContent = note.title || "제목 없는 노트";
-      elements.noteDescriptionElement.textContent = note.description || "설명이 없는 노트입니다.";
+      if (elements.noteTitleElement) {
+        elements.noteTitleElement.textContent = note.title || "제목 없는 노트";
+      }
+      if (elements.noteDescriptionElement) {
+        elements.noteDescriptionElement.textContent = note.description || "설명이 없는 노트입니다.";
+      }
       updateNotice("노트 정보를 불러왔습니다. 문서와 음성 파일을 준비해주세요.");
     })
     .catch((error) => {
       console.error(error);
-      setButtonDisabled(elements.runAnalysisButton, true);
+      updateNotice("노트 정보를 불러오는 데 실패했습니다.");
     });
+
+  initChatSession();
+
+  fetchLatestAnalysisResultService({
+    noteId,
+    elements,
+    updateNotice,
+    onComplete: (scores) => {
+      setButtonDisabled(elements.practiceModeButton, false);
+      latestAnalysisScores = scores;
+    },
+  });
 }
 
 document.addEventListener("DOMContentLoaded", initAnalysisPage);

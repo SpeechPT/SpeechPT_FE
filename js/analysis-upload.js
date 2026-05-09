@@ -2,8 +2,16 @@ import { API_BASE_URL, authFetch, fetchJson } from "./auth.js";
 
 export { API_BASE_URL, fetchJson };
 
-const audioExtensions = [".wav"];
-const audioMimeTypes = ["audio/wav", "audio/x-wav", "audio/wave"];
+const audioExtensions = [".mp3", ".wav", ".m4a"];
+const audioMimeTypes = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
+  "audio/mp4",
+  "audio/x-m4a",
+];
 const docExtensions = [".pdf", ".ppt", ".pptx"];
 const docMimeTypes = [
   "application/pdf",
@@ -182,7 +190,7 @@ export function handleDroppedFiles(files, documentInput, audioInput) {
       audioInput.files = dt.files;
       audioInput.dispatchEvent(new Event("change", { bubbles: true }));
     } else {
-      window.alert(`지원하지 않는 파일 형식입니다: ${file.name}\n\n지원 형식: PDF, PPT, PPTX, WAV`);
+      window.alert(`지원하지 않는 파일 형식입니다: ${file.name}\n\n지원 형식: PDF, PPT, PPTX, MP3, WAV, M4A`);
     }
   }
 }

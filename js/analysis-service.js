@@ -1,5 +1,21 @@
 import { API_BASE_URL, fetchJson, uploadSelectedFiles } from "./analysis-upload.js";
-import { renderEmptyResult, setElementText, renderTextList, renderSections } from "./analysis-render.js";
+import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript } from "./analysis-render.js";
+
+export async function requestChatReply(sessionId, question) {
+  if (!sessionId) {
+    throw new Error("채팅 세션이 초기화되지 않았습니다.");
+  }
+
+  return await fetchJson(`${API_BASE_URL}/chat-sessions/${sessionId}/reply`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      question,
+    }),
+  });
+}
 
 export async function fetchNoteDetail(noteId) {
   if (!noteId) {
@@ -9,7 +25,36 @@ export async function fetchNoteDetail(noteId) {
   return await fetchJson(`${API_BASE_URL}/notes/${noteId}`);
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, setButtonDisabled, onComplete }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete }) {
+  if (!noteId) return;
+  try {
+    const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
+    if (!result.is_ready) return;
+
+    renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
+    setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
+    setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
+    setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
+    setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
+    renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
+    renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
+    renderSections(elements.sectionsListElement, result.sections);
+    updateNotice("이전 분석 결과를 불러왔습니다.");
+
+    if (onComplete) {
+      onComplete({
+        contentCoverage: result.scores?.content_coverage ?? null,
+        deliveryStability: result.scores?.delivery_stability ?? null,
+        pacingScore: result.scores?.pacing_score ?? null,
+      });
+    }
+  } catch (err) {
+    if (err.status === 404) return;
+    console.error("이전 분석 결과 로드 실패:", err);
+  }
+}
+
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete }) {
   if (!analysisId) {
     return;
   }
@@ -23,6 +68,7 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
       return;
     }
 
+    renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
     setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
     setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
     setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
@@ -30,6 +76,9 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
     renderSections(elements.sectionsListElement, result.sections);
+    if (updateAnalysisProgress) {
+      updateAnalysisProgress(result.stage ?? "완료", 100);
+    }
     updateAnalysisChatStatus("분석이 완료되었습니다. 결과를 확인하세요.");
     updateNotice("분석 결과를 불러왔습니다.");
 
@@ -47,19 +96,26 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
   }
 }
 
-export async function pollAnalysisStatus({ analysisId, pollingTimer, elements, updateAnalysisChatStatus, updateNotice, setButtonDisabled, fetchAnalysisResult }) {
+export async function pollAnalysisStatus({ analysisId, pollingTimer, elements, updateAnalysisChatStatus, updateAnalysisProgress, updateNotice, setButtonDisabled, fetchAnalysisResult }) {
   if (!analysisId) {
     return pollingTimer;
   }
 
   try {
     const statusData = await fetchJson(`${API_BASE_URL}/analyses/${analysisId}/status`);
-    updateAnalysisChatStatus(`분석 중... ${statusData.stage} / 진행률 ${statusData.progress}%`);
+    if (updateAnalysisProgress) {
+      updateAnalysisProgress(statusData.stage, statusData.progress);
+    } else {
+      updateAnalysisChatStatus(`분석 중... ${statusData.stage} / 진행률 ${statusData.progress}%`);
+    }
 
     if (statusData.status === "done") {
       window.clearInterval(pollingTimer);
       pollingTimer = null;
       await fetchAnalysisResult();
+      if (updateAnalysisProgress) {
+        updateAnalysisProgress(statusData.stage ?? "완료", 100);
+      }
       setButtonDisabled(elements.runAnalysisButton, false);
       return pollingTimer;
     }
@@ -90,6 +146,7 @@ export async function runAnalysis({
   audioUploadId,
   updateNotice,
   updateAnalysisChatStatus,
+  updateAnalysisProgress,
   setButtonDisabled,
   elements,
 }) {
@@ -139,6 +196,10 @@ export async function runAnalysis({
         model_version_ae: "ae-v0.1",
       }),
     });
+
+    if (updateAnalysisProgress) {
+      updateAnalysisProgress(createdAnalysis.stage, createdAnalysis.progress);
+    }
 
     return {
       success: true,

@@ -76,27 +76,35 @@ export function bindInputListeners({
     });
   }
 
-  if (runAnalysisButton) {
-    runAnalysisButton.addEventListener("click", async () => {
-      await onRunAnalysis(getSelectedAttachments());
-    });
+  const textInput = document.querySelector('.chat-input-box input[type="text"]');
+
+  async function submitChat() {
+    const message = textInput?.value.trim() ?? "";
+    const attachments = getSelectedAttachments();
+
+    if (!message && attachments.length === 0) return;
+    if (textInput) textInput.value = "";
+
+    if (attachments.length > 0) {
+      addMessageToChat(chatBodyElement, message, true, attachments);
+      await onRunAnalysis(attachments, message);
+      return;
+    }
+
+    if (message && onTextSubmitted) {
+      await onTextSubmitted(message);
+    }
   }
 
-  const textInput = document.querySelector('.chat-input-box input[type="text"]');
+  if (runAnalysisButton) {
+    runAnalysisButton.addEventListener("click", submitChat);
+  }
+
   if (textInput) {
     textInput.addEventListener("keypress", async (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        const message = textInput.value.trim();
-        const attachments = getSelectedAttachments();
-
-        if (!message && attachments.length === 0) {
-          return;
-        }
-
-        addMessageToChat(chatBodyElement, message, true, attachments);
-        textInput.value = "";
-        await onRunAnalysis(attachments);
+        await submitChat();
       }
     });
   }

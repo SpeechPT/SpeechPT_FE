@@ -59,6 +59,25 @@ export function renderTextList(element, items, fallbackMessage) {
   });
 }
 
+export function renderTranscript(element, transcript) {
+  if (!element) return;
+
+  element.innerHTML = "";
+
+  if (!transcript || !transcript.trim()) {
+    const placeholder = document.createElement("p");
+    placeholder.className = "transcript-placeholder";
+    placeholder.textContent = "STT 변환 결과가 없습니다.";
+    element.appendChild(placeholder);
+    return;
+  }
+
+  const text = document.createElement("p");
+  text.className = "transcript-body";
+  text.textContent = transcript;
+  element.appendChild(text);
+}
+
 export function renderSections(element, sections) {
   if (!element) {
     return;

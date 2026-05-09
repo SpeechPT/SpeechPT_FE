@@ -11,6 +11,7 @@
   <div class="analysis-page">
     <header class="analysis-header">
       <button class="back-button" id="backButton">← 노트 목록</button>
+      <span class="analysis-header-title" id="noteTitle"></span>
     </header>
     <main class="analysis-layout">
       
@@ -31,11 +32,15 @@
         ></div>
 
         <div class="feedback-box transcript-box">
-          <p>발표 재료 / STT 영역</p>
-          <p id="noteDescription">노트 설명을 불러오는 중입니다.</p>
+          <p class="transcript-section-label">STT 변환 대본</p>
+          <div id="transcriptText" class="transcript-text-area">
+            <p class="transcript-placeholder">음성 파일을 업로드하고 분석을 실행하면 변환된 대본이 여기에 표시됩니다.</p>
+          </div>
+
+          <p class="transcript-section-label" style="margin-top: 16px;">섹션 피드백</p>
+          <p id="noteDescription" class="note-description-text">노트 설명을 불러오는 중입니다.</p>
           <ul id="sectionsList">
-            <li>음성 파일을 업로드하고 분석이 완료되면, 변환된 대본과 섹션 피드백이 여기에 표시됩니다.</li>
-            <li>나중에는 특정 대본 구간을 누르면 위 미리보기 영역에서 해당 발표 자료 섹션이 강조되도록 확장할 수 있습니다.</li>
+            <li>분석이 완료되면 섹션별 피드백이 여기에 표시됩니다.</li>
           </ul>
         </div>
       </section>
@@ -54,9 +59,7 @@
           <p>노트 정보를 불러오는 중입니다.</p>
         </div>
 
-        <div class="chat-body">
-          <div class="chat-message bot">분석이 완료되면 이곳에서 어떤 부분을 개선하면 좋을지 설명형 피드백을 보여줍니다.</div>
-          <div class="chat-message bot">MVP 단계에서는 분석 실행 버튼과 현재 상태 확인을 먼저 연결합니다.</div>
+        <div class="chat-body" id="chatBody">
         </div>
 
         <div class="chat-input-box" id="chatDropzone">
@@ -64,9 +67,9 @@
             <div id="attachedFiles" class="attached-files"></div>
             <div class="input-row">
               <input type="text" placeholder="질문을 입력하세요" />
-              <input type="file" id="filePicker" accept=".pdf,.ppt,.pptx,.wav" multiple hidden />
+              <input type="file" id="filePicker" accept=".pdf,.ppt,.pptx,.mp3,.wav,.m4a" multiple hidden />
               <input type="file" id="documentFile" accept=".pdf,.ppt,.pptx" hidden />
-              <input type="file" id="audioFile" accept=".wav" hidden />
+              <input type="file" id="audioFile" accept=".mp3,.wav,.m4a" hidden />
               <button type="button" id="runAnalysisButton">➤</button>
               <button type="button" id="attachFileButton">📎</button>
             </div>
