@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://127.0.0.1:8000";
+export const API_BASE_URL = "https://dmjeikj6wuo3.cloudfront.net";
 
 const ACCESS_TOKEN_KEY = "speechpt_access_token";
 const REFRESH_TOKEN_KEY = "speechpt_refresh_token";

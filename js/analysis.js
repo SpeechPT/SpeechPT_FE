@@ -71,6 +71,9 @@ let pollingTimer = null;
 let documentPreviewUrl = null;
 let latestAnalysisScores = null;
 let chatSessionId = null;
+let isBusy = false;
+let busyMode = null;
+let chatAbortController = null;
 
 async function saveChatMessageToServer(role, content) {
   if (!chatSessionId) return;
@@ -285,6 +288,30 @@ function updateNotice(message) {
   setNotice(elements.noticeText, message);
 }
 
+function setRunButtonMode(mode = "send") {
+  const button = elements.runAnalysisButton;
+  if (!button) {
+    return;
+  }
+
+  if (mode === "stop") {
+    button.classList.add("is-stoppable");
+    button.textContent = "";
+    button.title = "중단";
+    return;
+  }
+
+  button.classList.remove("is-stoppable");
+  button.textContent = "↑";
+  button.title = "전송";
+}
+
+function setBusyState(nextBusy, mode = null) {
+  isBusy = nextBusy;
+  busyMode = nextBusy ? mode : null;
+  setRunButtonMode(nextBusy ? "stop" : "send");
+}
+
 function scrollChatInputIntoView() {
   const dropzone = elements.chatDropzoneElement;
   if (!dropzone) {
@@ -403,49 +430,73 @@ async function pollAnalysisStatus() {
     setButtonDisabled,
     fetchAnalysisResult,
   });
+
+  if (!pollingTimer && busyMode === "analysis") {
+    setBusyState(false);
+  }
 }
 
 async function runAnalysis() {
-  const result = await runAnalysisService({
-    noteId,
-    documentInput: elements.documentInput,
-    audioInput: elements.audioInput,
-    documentUploadId,
-    audioUploadId,
-    updateNotice,
-    updateAnalysisChatStatus,
-    updateAnalysisProgress,
-    setButtonDisabled,
-    elements,
-  });
+  setBusyState(true, "analysis");
+  try {
+    const result = await runAnalysisService({
+      noteId,
+      documentInput: elements.documentInput,
+      audioInput: elements.audioInput,
+      documentUploadId,
+      audioUploadId,
+      updateNotice,
+      updateAnalysisChatStatus,
+      updateAnalysisProgress,
+      setButtonDisabled,
+      elements,
+    });
 
-  documentUploadId = result.documentUploadId;
-  audioUploadId = result.audioUploadId;
+    documentUploadId = result.documentUploadId;
+    audioUploadId = result.audioUploadId;
 
-  if (!result.success) {
+    if (!result.success) {
+      setBusyState(false);
+      return false;
+    }
+
+    analysisId = result.analysisId;
+    updateAnalysisChatStatus(result.statusText);
+
+    if (pollingTimer) {
+      window.clearInterval(pollingTimer);
+    }
+
+    pollingTimer = window.setInterval(pollAnalysisStatus, 2000);
+    await pollAnalysisStatus();
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    updateNotice("분석 시작 중 오류가 발생했습니다.");
+    setBusyState(false);
     return false;
   }
-
-  analysisId = result.analysisId;
-  updateAnalysisChatStatus(result.statusText);
-
-  if (pollingTimer) {
-    window.clearInterval(pollingTimer);
-  }
-
-  pollingTimer = window.setInterval(pollAnalysisStatus, 2000);
-  await pollAnalysisStatus();
-
-  return true;
 }
 
 async function submitChatQuestion(message) {
   addMessageToChat(elements.chatBodyElement, message, true, []);
+  setBusyState(true, "chat");
+  chatAbortController = new AbortController();
 
   try {
-    const reply = await requestChatReplyService(chatSessionId, message);
+    const reply = await requestChatReplyService(chatSessionId, message, chatAbortController.signal);
     addMessageToChat(elements.chatBodyElement, reply.answer, false, []);
   } catch (error) {
+    if (error?.name === "AbortError") {
+      addMessageToChat(
+        elements.chatBodyElement,
+        "응답 생성을 중단했습니다.",
+        false,
+        []
+      );
+      return;
+    }
     console.error(error);
     addMessageToChat(
       elements.chatBodyElement,
@@ -453,6 +504,32 @@ async function submitChatQuestion(message) {
       false,
       []
     );
+  } finally {
+    chatAbortController = null;
+    setBusyState(false);
+  }
+}
+
+function stopCurrentTask() {
+  if (!isBusy) {
+    return;
+  }
+
+  if (busyMode === "analysis") {
+    if (pollingTimer) {
+      window.clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+    updateAnalysisChatStatus("분석 요청을 중단했습니다. 다시 실행할 수 있습니다.");
+    updateNotice("분석 상태 확인을 중단했습니다.");
+    setButtonDisabled(elements.runAnalysisButton, false);
+    setBusyState(false);
+    return;
+  }
+
+  if (busyMode === "chat") {
+    chatAbortController?.abort();
+    setBusyState(false);
   }
 }
 
@@ -490,6 +567,8 @@ function initAnalysisPage() {
     },
     onFileChanged,
     onTextSubmitted: submitChatQuestion,
+    onStopRequested: stopCurrentTask,
+    getIsBusy: () => isBusy,
     getSelectedAttachments: () => getSelectedAttachments(elements.documentInput, elements.audioInput),
     addMessageToChat: addMessageToChatAndPersist,
     chatBodyElement: elements.chatBodyElement,
@@ -504,6 +583,7 @@ function initAnalysisPage() {
 
   updateNotice("노트 정보를 불러오는 중입니다.");
   resetAnalysisChatStatus();
+  setRunButtonMode("send");
 
   fetchNoteDetailService(noteId)
     .then((note) => {

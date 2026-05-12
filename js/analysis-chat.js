@@ -47,6 +47,8 @@ export function bindInputListeners({
   onBack,
   onFileChanged,
   onTextSubmitted,
+  onStopRequested,
+  getIsBusy,
   getSelectedAttachments,
   addMessageToChat,
   chatBodyElement,
@@ -79,6 +81,11 @@ export function bindInputListeners({
   const textInput = document.querySelector('.chat-input-box input[type="text"]');
 
   async function submitChat() {
+    if (getIsBusy?.()) {
+      onStopRequested?.();
+      return;
+    }
+
     const message = textInput?.value.trim() ?? "";
     const attachments = getSelectedAttachments();
 

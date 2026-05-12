@@ -1,7 +1,8 @@
 import { API_BASE_URL, fetchJson, uploadSelectedFiles } from "./analysis-upload.js";
-import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript } from "./analysis-render.js";
+import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript, renderDocumentPreview } from "./analysis-render.js";
+import { authFetch } from "./auth.js";
 
-export async function requestChatReply(sessionId, question) {
+export async function requestChatReply(sessionId, question, signal = null) {
   if (!sessionId) {
     throw new Error("채팅 세션이 초기화되지 않았습니다.");
   }
@@ -11,6 +12,7 @@ export async function requestChatReply(sessionId, question) {
     headers: {
       "Content-Type": "application/json",
     },
+    signal,
     body: JSON.stringify({
       question,
     }),
@@ -23,6 +25,20 @@ export async function fetchNoteDetail(noteId) {
   }
 
   return await fetchJson(`${API_BASE_URL}/notes/${noteId}`);
+}
+
+async function _restoreDocumentPreview(uploadId, filename, previewElement) {
+  if (!uploadId || !previewElement) return;
+  try {
+    const response = await authFetch(`${API_BASE_URL}/uploads/${uploadId}/file`);
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const fileInfo = { name: filename || "document", type: blob.type, size: blob.size };
+    renderDocumentPreview(previewElement, fileInfo, blobUrl);
+  } catch (err) {
+    console.error("문서 미리보기 복원 실패:", err);
+  }
 }
 
 export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete }) {
@@ -40,6 +56,10 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
     renderSections(elements.sectionsListElement, result.sections);
     updateNotice("이전 분석 결과를 불러왔습니다.");
+
+    if (result.document_upload_id) {
+      _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
+    }
 
     if (onComplete) {
       onComplete({
@@ -177,7 +197,6 @@ export async function runAnalysis({
     return { success: false, documentUploadId: uploadResult.documentUploadId, audioUploadId: uploadResult.audioUploadId };
   }
 
-  setButtonDisabled(elements.runAnalysisButton, true);
   updateAnalysisChatStatus("분석 작업을 생성 중입니다. 파일 업로드와 분석을 준비 중입니다...");
   updateNotice("분석 작업을 생성하는 중입니다.");
   renderEmptyResult(elements);
