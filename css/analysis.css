@@ -230,6 +230,7 @@
 .feedback-box p,
 .score-card p {
   margin-bottom: 10px;
+  word-break: break-word;
 }
 
 .feedback-box p:last-child,
@@ -294,6 +295,7 @@
 .score-card li {
   margin-bottom: 8px;
   line-height: 1.45;
+  word-break: break-word;
 }
 
 .chat-header {
@@ -550,6 +552,8 @@
 
 .right-panel .score-card {
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .right-panel .score-card-primary {
