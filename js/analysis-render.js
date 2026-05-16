@@ -309,3 +309,45 @@ export function renderEmptyResult(elements) {
   clearList(elements.improvementsListElement, "개선점 데이터가 아직 없습니다.");
   clearList(elements.sectionsListElement, "섹션 결과가 아직 없습니다.");
 }
+
+/**
+ * 내용 전달력 점수를 reliability 신호등에 따라 렌더링한다.
+ *
+ * - high  : 점수 그대로 표시
+ * - medium: 점수 + "참고용" 배지
+ * - low   : 점수 숨김 (취소선) + note 문구 표시
+ */
+export function renderContentCoverage(scoreElement, badgeElement, noteElement, rowElement, score, reliability) {
+  const level = reliability?.alignment_level ?? "high";
+  const shown = reliability?.content_coverage_shown ?? true;
+
+  // 점수 표시 / 숨김
+  if (rowElement) {
+    rowElement.classList.toggle("reliability-low", level === "low" || !shown);
+  }
+  if (scoreElement) {
+    scoreElement.textContent = score !== null && score !== undefined ? String(score) : "-";
+  }
+
+  // 배지 (medium만 표시)
+  if (badgeElement) {
+    if (level === "medium") {
+      badgeElement.textContent = "참고용";
+      badgeElement.className = "reliability-badge medium";
+      badgeElement.hidden = false;
+    } else {
+      badgeElement.hidden = true;
+    }
+  }
+
+  // note 문구 (low / medium)
+  if (noteElement) {
+    const noteText = reliability?.note ?? "";
+    if (noteText && (level === "low" || level === "medium")) {
+      noteElement.textContent = noteText;
+      noteElement.hidden = false;
+    } else {
+      noteElement.hidden = true;
+    }
+  }
+}

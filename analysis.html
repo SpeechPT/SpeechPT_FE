@@ -88,7 +88,10 @@
       <section class="right-panel">
         <div class="score-card score-card-primary">
           <p>3개 핵심 점수</p>
-          <p>내용 커버리지: <span id="contentCoverageScore">-</span></p>
+          <p class="score-row" id="contentCoverageRow">
+            내용 전달력: <span id="contentCoverageScore">-</span><span class="reliability-badge" id="reliabilityBadge" hidden></span>
+          </p>
+          <p class="reliability-note" id="reliabilityNote" hidden></p>
           <p>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
           <p>발표 속도: <span id="pacingScore">-</span></p>
         </div>
@@ -123,7 +126,6 @@
           <ul id="strengthsList">
             <li>강점 데이터가 아직 없습니다.</li>
           </ul>
-          <button type="button" id="practiceModeButton" disabled>연습모드</button>
         </div>
       </section>
 

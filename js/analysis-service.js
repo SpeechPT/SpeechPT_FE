@@ -1,5 +1,5 @@
 import { API_BASE_URL, fetchJson, uploadSelectedFiles } from "./analysis-upload.js";
-import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript, renderDocumentPreview } from "./analysis-render.js";
+import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript, renderDocumentPreview, renderContentCoverage } from "./analysis-render.js";
 import { authFetch } from "./auth.js";
 
 export async function requestChatReply(sessionId, question, signal = null) {
@@ -48,7 +48,14 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
     if (!result.is_ready) return;
 
     renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
-    setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
+    renderContentCoverage(
+      elements.contentCoverageElement,
+      elements.reliabilityBadgeElement,
+      elements.reliabilityNoteElement,
+      elements.contentCoverageRowElement,
+      result.scores?.content_coverage_user ?? null,
+      result.reliability ?? null,
+    );
     setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
     setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
@@ -63,9 +70,10 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
 
     if (onComplete) {
       onComplete({
-        contentCoverage: result.scores?.content_coverage ?? null,
+        contentCoverage: result.scores?.content_coverage_user ?? null,
         deliveryStability: result.scores?.delivery_stability ?? null,
         pacingScore: result.scores?.pacing_score ?? null,
+        reliability: result.reliability ?? null,
       });
     }
   } catch (err) {
@@ -89,7 +97,14 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     }
 
     renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
-    setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
+    renderContentCoverage(
+      elements.contentCoverageElement,
+      elements.reliabilityBadgeElement,
+      elements.reliabilityNoteElement,
+      elements.contentCoverageRowElement,
+      result.scores?.content_coverage_user ?? null,
+      result.reliability ?? null,
+    );
     setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
     setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
@@ -104,9 +119,10 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
 
     if (onComplete) {
       onComplete({
-        contentCoverage: result.scores?.content_coverage ?? null,
+        contentCoverage: result.scores?.content_coverage_user ?? null,
         deliveryStability: result.scores?.delivery_stability ?? null,
         pacingScore: result.scores?.pacing_score ?? null,
+        reliability: result.reliability ?? null,
       });
     }
   } catch (error) {

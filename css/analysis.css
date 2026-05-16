@@ -594,6 +594,48 @@
   line-height: 1.6;
 }
 
+/* ── 신뢰도 신호등 ──────────────────────────────────────── */
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.score-row.reliability-low #contentCoverageScore {
+  color: #b0b8c8;
+  text-decoration: line-through;
+  text-decoration-color: #b0b8c8;
+}
+
+.reliability-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+.reliability-badge.medium {
+  background: rgba(255, 193, 7, 0.15);
+  color: #a07800;
+  border: 1px solid rgba(255, 193, 7, 0.4);
+}
+
+.reliability-note {
+  font-size: 11px;
+  color: #8a9ab0;
+  line-height: 1.5;
+  margin-top: -4px !important;
+  padding: 6px 10px;
+  background: rgba(176, 184, 200, 0.08);
+  border-left: 2px solid #b0b8c8;
+  border-radius: 4px;
+}
+
 @media (max-width: 1200px) {
   .analysis-page {
     padding: 24px 20px;
