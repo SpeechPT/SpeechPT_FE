@@ -36,20 +36,33 @@ function updateDashboard(notes) {
     return;
   }
 
-  [...notes].reverse().slice(0, 6).forEach((note) => {
+  const thumbGradients = [
+    "linear-gradient(135deg,#a084ee,#f070a0)",
+    "linear-gradient(135deg,#4f95ff,#7ecfff)",
+    "linear-gradient(135deg,#34c88a,#4fd1c5)",
+    "linear-gradient(135deg,#ff9f43,#ffd32a)",
+    "linear-gradient(135deg,#f070a0,#ff6b6b)",
+    "linear-gradient(135deg,#6c63ff,#a084ee)",
+  ];
+
+  [...notes].reverse().slice(0, 6).forEach((note, i) => {
     const li = document.createElement("li");
     li.className = "dashboard-note-item";
     const date = new Date(note.created_at).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
+      year: "numeric", month: "2-digit", day: "2-digit",
     });
+    const grad = thumbGradients[i % thumbGradients.length];
     li.innerHTML = `
-      <div class="dashboard-note-thumb"></div>
+      <div class="dashboard-note-thumb" style="background:${grad}"></div>
       <div class="dashboard-note-info">
         <div class="dashboard-note-title">${note.title}</div>
-        <div class="dashboard-note-date">${date}</div>
+        <div class="dashboard-note-meta">
+          <span class="dashboard-note-date">${date}</span>
+        </div>
       </div>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;opacity:0.35">
+        <path d="M5 3l4 4-4 4" stroke="#3f6fa0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     `;
     li.addEventListener("click", () => {
       window.location.href = `analysis.html?note_id=${note.note_id}`;
@@ -82,10 +95,7 @@ async function doLogin(payload) {
     body: JSON.stringify(payload),
   });
   setTokens(tokens);
-  setLandingState(true);
-  setNotice("로그인이 완료되었습니다.");
-  closeLoginModal();
-  await fetchAndUpdateDashboard();
+  window.location.href = "note.html";
 }
 
 function setupLoginModal() {
@@ -248,8 +258,12 @@ function initBanner() {
 }
 
 async function initIndexPage() {
+  // Google OAuth 콜백: 토큰이 URL에 있으면 저장 후 바로 노트 목록으로 이동
   const restored = setTokensFromUrlParams();
-  if (restored) setNotice("Google 로그인이 완료되었습니다.");
+  if (restored) {
+    window.location.href = "note.html";
+    return;
+  }
 
   initBanner();
 
