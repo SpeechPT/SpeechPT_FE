@@ -141,7 +141,12 @@ export function renderSections(element, sections, onSectionPlay) {
     rightCol.append(timeEl, scoreEl, chevron);
     header.append(leftCol, rightCol);
 
-    // ── 플레이어 패널 ──
+    // ── 피드백 텍스트 (항상 표시) ──
+    const feedbackEl = document.createElement("p");
+    feedbackEl.className = "section-card-feedback";
+    feedbackEl.textContent = section.feedback || "";
+
+    // ── 플레이어 패널 (접기/펼치기) ──
     const playerArea = document.createElement("div");
     playerArea.className = "section-player-area";
 
@@ -171,7 +176,7 @@ export function renderSections(element, sections, onSectionPlay) {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
     });
 
-    card.append(header, playerArea);
+    card.append(header, feedbackEl, playerArea);
     element.appendChild(card);
   });
 }

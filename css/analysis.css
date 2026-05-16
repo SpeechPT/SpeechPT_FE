@@ -408,17 +408,29 @@
 }
 
 /* ── 섹션 플레이어 패널 ──────────────────────────────────── */
+.section-card-feedback {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #4a6880;
+  padding: 5px 14px 9px;
+  margin: 0 !important;
+  border-top: 1px solid rgba(120, 180, 230, 0.14);
+  word-break: break-word;
+}
+
 .section-player-area {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0 14px;
+  border-top: 0 solid transparent;
 }
 
 .section-player-area.is-open {
-  max-height: 200px;
-  padding: 10px 14px 14px;
+  max-height: 100px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(79, 149, 255, 0.12);
 }
 
 .section-player-controls {
@@ -469,14 +481,6 @@
   white-space: nowrap;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-}
-
-.section-feedback-text {
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: #3d5a7a;
-  margin: 0 !important;
-  word-break: break-word;
 }
 
 .section-player-no-audio {
@@ -1108,6 +1112,19 @@
 #welcomeAudioZone { border-color: rgba(160,132,238,0.35); background: rgba(248,245,255,0.7); }
 #welcomeAudioZone:hover { border-color: #a084ee; background: rgba(160,132,238,0.07); }
 #welcomeAudioZone.has-file { border-style: solid; border-color: #a084ee; background: rgba(160,132,238,0.07); }
+
+.welcome-upload-zone.drag-over {
+  border-style: solid;
+  border-color: #4f95ff;
+  background: rgba(79, 149, 255, 0.1);
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(79,149,255,0.16);
+}
+#welcomeAudioZone.drag-over {
+  border-color: #a084ee;
+  background: rgba(160,132,238,0.1);
+  box-shadow: 0 8px 24px rgba(160,132,238,0.16);
+}
 
 .welcome-upload-zone-icon { margin-bottom: 4px; }
 

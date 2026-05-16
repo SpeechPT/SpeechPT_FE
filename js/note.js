@@ -20,19 +20,26 @@ function closeAllMenus() {
 }
 
 async function deleteNote(noteId, cardEl) {
+  // 즉시 애니메이션 시작 — API 응답 기다리지 않음
+  currentNotes = currentNotes.filter((n) => n.note_id !== noteId);
+  cardEl.classList.add("is-deleting");
+  const ANIM_MS = 280;
+  setTimeout(() => cardEl.remove(), ANIM_MS);
+
   try {
     const res = await authFetch(`${API_BASE_URL}/notes/${noteId}`, { method: "DELETE" });
     if (!res.ok && res.status !== 204) {
       throw new Error(`삭제 실패: ${res.status}`);
     }
-    currentNotes = currentNotes.filter((n) => n.note_id !== noteId);
-    cardEl.classList.add("is-deleting");
-    cardEl.addEventListener("animationend", () => cardEl.remove(), { once: true });
     const remaining = currentNotes.length;
     setNotice(remaining === 0 ? "아직 생성된 노트가 없습니다. 새 노트를 추가해보세요." : `총 ${remaining}개의 노트가 있습니다.`);
   } catch (err) {
     console.error(err);
-    setNotice("노트 삭제에 실패했습니다.");
+    setNotice("노트 삭제에 실패했습니다. 새로고침 후 다시 시도해주세요.");
+    // 실패 시 최신 목록 재로드해 UI를 서버 상태와 동기화
+    try {
+      await fetchNotes();
+    } catch (_) { /* ignore */ }
   }
 }
 

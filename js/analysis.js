@@ -171,6 +171,23 @@ function showWelcomeModal() {
   elements.documentInput?.addEventListener("change", onDocChange);
   elements.audioInput?.addEventListener("change", onAudioChange);
 
+  function setupWelcomeDropZone(zone, input) {
+    zone?.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone?.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("drag-over");
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change"));
+    });
+  }
+  setupWelcomeDropZone(docZone, elements.documentInput);
+  setupWelcomeDropZone(audioZone, elements.audioInput);
+
   function closeModal() {
     backdrop.classList.remove("active");
   }
@@ -433,8 +450,7 @@ function _fmtTime(sec) {
 function playSectionInPanel(section, playerEl) {
   playerEl.innerHTML = "";
 
-  const file = elements.audioInput?.files?.[0];
-  if (!file) {
+  if (!sectionAudioBlobUrl || !sectionAudio) {
     const msg = document.createElement("p");
     msg.className = "section-player-no-audio";
     msg.textContent = "재생하려면 음성 파일을 다시 업로드해주세요.";
@@ -442,13 +458,6 @@ function playSectionInPanel(section, playerEl) {
     return;
   }
 
-  if (!sectionAudio) {
-    sectionAudio = new Audio();
-  }
-  if (!sectionAudioBlobUrl) {
-    sectionAudioBlobUrl = URL.createObjectURL(file);
-    sectionAudio.src = sectionAudioBlobUrl;
-  }
   sectionAudio.pause();
 
   const startTime = section.start_time_sec ?? 0;
@@ -481,11 +490,7 @@ function playSectionInPanel(section, playerEl) {
   trackWrap.appendChild(progress);
   controls.append(playBtn, trackWrap, timeLabel);
 
-  const feedbackEl = document.createElement("p");
-  feedbackEl.className = "section-feedback-text";
-  feedbackEl.textContent = section.feedback || "";
-
-  playerEl.append(controls, feedbackEl);
+  playerEl.append(controls);
 
   let isPlaying = false;
   let timeupdateHandler = null;
@@ -609,6 +614,7 @@ function updateAnalysisProgress(stage, progress) {
   }
 
   if (!analysisProgressBubble) {
+    analysisStatusMessage = clearAnalysisStatusMessage(analysisStatusMessage);
     analysisProgressBubble = createAnalysisProgressBubble(elements.chatBodyElement);
   }
   updateAnalysisProgressBubble(analysisProgressBubble, getStageLabel(stage), progress);
@@ -653,6 +659,12 @@ function onFileChanged(kind, file) {
 
   if (kind === "audio") {
     audioUploadId = null;
+    revokeSectionAudio();
+    if (file) {
+      sectionAudioBlobUrl = URL.createObjectURL(file);
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = sectionAudioBlobUrl;
+    }
   }
 
   renderAttachedFileChip(elements.attachedFilesContainer, kind, file, removeAttachedFile);
@@ -720,7 +732,6 @@ async function runAnalysis() {
     }
 
     analysisId = result.analysisId;
-    updateAnalysisChatStatus(result.statusText);
 
     if (pollingTimer) {
       window.clearInterval(pollingTimer);
