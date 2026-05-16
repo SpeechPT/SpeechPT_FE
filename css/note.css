@@ -679,9 +679,8 @@
 /* ── Grid ────────────────────────────────────────────────────── */
 .note-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(260px, 280px));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 24px;
-  justify-content: start;
   align-content: start;
   width: 100%;
   transition: opacity 0.18s ease;
@@ -724,7 +723,7 @@
 /* ── Note card ───────────────────────────────────────────────── */
 .note-card {
   width: 100%;
-  max-width: 280px;
+  max-width: none;
   border-radius: 22px;
   overflow: hidden;
   background: #fff;

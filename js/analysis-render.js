@@ -300,6 +300,88 @@ export function clearSelectedFiles(documentInput, audioInput, filePicker, render
   }
 }
 
+let _historyChart = null;
+
+/**
+ * 분석 히스토리 꺾은선 그래프를 렌더링한다.
+ * selectedIndex: 현재 선택된 분석 인덱스 (굵은 포인트로 강조)
+ * onPointClick(index, analysisId): 포인트 클릭 콜백
+ */
+export function renderHistoryChart(canvasEl, emptyEl, history, selectedIndex, onPointClick) {
+  if (_historyChart) {
+    _historyChart.destroy();
+    _historyChart = null;
+  }
+
+  if (!history || history.length === 0) {
+    if (canvasEl) canvasEl.hidden = true;
+    if (emptyEl) emptyEl.style.display = "flex";
+    return;
+  }
+
+  if (canvasEl) canvasEl.hidden = false;
+  if (emptyEl) emptyEl.style.display = "none";
+
+  const labels = history.map(h => h.label);
+
+  function makeDataset(key, color) {
+    return {
+      data: history.map(h => h.scores[key]),
+      borderColor: color,
+      backgroundColor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
+      tension: 0.35,
+      pointRadius: history.map((_, i) => i === selectedIndex ? 7 : 4),
+      pointHoverRadius: 7,
+      pointBackgroundColor: history.map((_, i) => i === selectedIndex ? color : "#fff"),
+      pointBorderColor: color,
+      pointBorderWidth: 2,
+    };
+  }
+
+  _historyChart = new window.Chart(canvasEl, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { ...makeDataset("content_coverage_user", "rgb(79,149,255)"), label: "내용 전달력" },
+        { ...makeDataset("delivery_stability", "rgb(52,200,138)"), label: "전달 안정성" },
+        { ...makeDataset("pacing_score", "rgb(255,159,67)"), label: "발표 속도" },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 250 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => history[items[0].dataIndex].label,
+            afterBody: () => ["클릭하면 해당 분석 보기"],
+          },
+        },
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, font: { size: 10 }, color: "#8a9ab0" },
+          grid: { color: "rgba(0,0,0,0.05)" },
+        },
+        x: {
+          ticks: { font: { size: 10 }, color: "#8a9ab0" },
+          grid: { display: false },
+        },
+      },
+      onClick: (_e, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index;
+          onPointClick(idx, history[idx].analysis_id);
+        }
+      },
+    },
+  });
+}
+
 export function renderEmptyResult(elements) {
   setElementText(elements.contentCoverageElement, "- ");
   setElementText(elements.deliveryStabilityElement, "- ");

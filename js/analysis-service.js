@@ -19,6 +19,16 @@ export async function requestChatReply(sessionId, question, signal = null) {
   });
 }
 
+export async function fetchAnalysisHistory(noteId) {
+  if (!noteId) return [];
+  try {
+    return await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/history`);
+  } catch (err) {
+    console.error("분석 히스토리 로드 실패:", err);
+    return [];
+  }
+}
+
 export async function fetchNoteDetail(noteId) {
   if (!noteId) {
     throw new Error("note_id가 없습니다.");
@@ -32,10 +42,25 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   try {
     const response = await authFetch(`${API_BASE_URL}/uploads/${uploadId}/file`);
     if (!response.ok) return;
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const fileInfo = { name: filename || "document", type: blob.type, size: blob.size };
-    renderDocumentPreview(previewElement, fileInfo, blobUrl);
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      // S3: backend returns presigned URL as JSON — use directly as iframe src (no CORS issue)
+      const json = await response.json();
+      if (!json.preview_url) return;
+      const fileInfo = {
+        name: json.filename || filename || "document",
+        type: json.content_type || "application/pdf",
+        size: 0,
+      };
+      renderDocumentPreview(previewElement, fileInfo, json.preview_url);
+    } else {
+      // Local: backend returns the file directly — create a blob URL
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const fileInfo = { name: filename || "document", type: blob.type, size: blob.size };
+      renderDocumentPreview(previewElement, fileInfo, blobUrl);
+    }
   } catch (err) {
     console.error("문서 미리보기 복원 실패:", err);
   }
@@ -116,6 +141,10 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     }
     updateAnalysisChatStatus("분석이 완료되었습니다. 결과를 확인하세요.");
     updateNotice("분석 결과를 불러왔습니다.");
+
+    if (result.document_upload_id) {
+      _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
+    }
 
     if (onComplete) {
       onComplete({

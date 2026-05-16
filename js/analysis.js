@@ -2,6 +2,7 @@ import {
   fetchNoteDetail as fetchNoteDetailService,
   fetchAnalysisResult as fetchAnalysisResultService,
   fetchLatestAnalysisResult as fetchLatestAnalysisResultService,
+  fetchAnalysisHistory as fetchAnalysisHistoryService,
   pollAnalysisStatus as pollAnalysisStatusService,
   requestChatReply as requestChatReplyService,
   runAnalysis as runAnalysisService,
@@ -17,6 +18,7 @@ import {
   getSelectedAttachments,
   clearSelectedFiles,
   renderEmptyResult,
+  renderHistoryChart,
 } from "./analysis-render.js";
 import { setupDragAndDrop, bindInputListeners } from "./analysis-chat.js";
 import { initPracticeMode, openPracticeModal } from "./practice-mode.js";
@@ -52,6 +54,8 @@ const elements = {
   attachFileButton: document.getElementById("attachFileButton"),
   runAnalysisButton: document.getElementById("runAnalysisButton"),
   practiceModeButton: document.getElementById("practiceModeButton"),
+  historyChartElement: document.getElementById("historyChart"),
+  historyChartEmptyElement: document.getElementById("historyChartEmpty"),
   contentCoverageElement: document.getElementById("contentCoverageScore"),
   contentCoverageRowElement: document.getElementById("contentCoverageRow"),
   reliabilityBadgeElement: document.getElementById("reliabilityBadge"),
@@ -77,6 +81,42 @@ let chatSessionId = null;
 let isBusy = false;
 let busyMode = null;
 let chatAbortController = null;
+let analysisHistory = [];
+let selectedHistoryIndex = null;
+
+async function loadHistoryChart(autoSelectLatest = false) {
+  analysisHistory = await fetchAnalysisHistoryService(noteId);
+  if (autoSelectLatest && analysisHistory.length > 0) {
+    selectedHistoryIndex = analysisHistory.length - 1;
+  }
+  renderHistoryChart(
+    elements.historyChartElement,
+    elements.historyChartEmptyElement,
+    analysisHistory,
+    selectedHistoryIndex,
+    onHistoryPointClick,
+  );
+}
+
+async function onHistoryPointClick(index, clickedAnalysisId) {
+  selectedHistoryIndex = index;
+  renderHistoryChart(
+    elements.historyChartElement,
+    elements.historyChartEmptyElement,
+    analysisHistory,
+    selectedHistoryIndex,
+    onHistoryPointClick,
+  );
+  await fetchAnalysisResultService({
+    analysisId: clickedAnalysisId,
+    elements,
+    updateNotice,
+    updateAnalysisChatStatus,
+    updateAnalysisProgress: null,
+    setButtonDisabled,
+    onComplete: (scores) => { latestAnalysisScores = scores; },
+  });
+}
 
 async function saveChatMessageToServer(role, content) {
   if (!chatSessionId) return;
@@ -418,6 +458,7 @@ async function fetchAnalysisResult() {
     onComplete: (scores) => {
       setButtonDisabled(elements.practiceModeButton, false);
       latestAnalysisScores = scores;
+      loadHistoryChart(true);
     },
   });
 }
@@ -614,7 +655,14 @@ function initAnalysisPage() {
       latestAnalysisScores = scores;
     },
   });
+
+  loadHistoryChart(true);
 }
 
-document.addEventListener("DOMContentLoaded", initAnalysisPage);
+document.addEventListener("DOMContentLoaded", () => {
+  initAnalysisPage();
+  document.getElementById("logoHome")?.addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+});
 window.addEventListener("beforeunload", revokeDocumentPreviewUrl);

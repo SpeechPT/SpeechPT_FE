@@ -10,6 +10,7 @@
 <body>
   <div class="analysis-page">
     <header class="analysis-header">
+      <img src="./assets/logo.png" alt="SpeechPT" class="logo-img" style="height:32px;cursor:pointer" id="logoHome" />
       <button class="back-button" id="backButton">← 노트 목록</button>
       <span class="analysis-header-title" id="noteTitle"></span>
     </header>
@@ -87,13 +88,19 @@
 
       <section class="right-panel">
         <div class="score-card score-card-primary">
-          <p>3개 핵심 점수</p>
-          <p class="score-row" id="contentCoverageRow">
-            내용 전달력: <span id="contentCoverageScore">-</span><span class="reliability-badge" id="reliabilityBadge" hidden></span>
-          </p>
-          <p class="reliability-note" id="reliabilityNote" hidden></p>
-          <p>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
-          <p>발표 속도: <span id="pacingScore">-</span></p>
+          <p class="history-chart-title">분석 히스토리</p>
+          <div class="history-chart-wrap">
+            <canvas id="historyChart"></canvas>
+            <p class="history-chart-empty" id="historyChartEmpty">분석을 완료하면 점수 추이가 표시됩니다</p>
+          </div>
+          <div class="score-legend-row">
+            <p class="score-row" id="contentCoverageRow">
+              <span class="score-legend-dot" style="background:#4f95ff"></span>내용 전달력: <span id="contentCoverageScore">-</span><span class="reliability-badge" id="reliabilityBadge" hidden></span>
+            </p>
+            <p class="reliability-note" id="reliabilityNote" hidden></p>
+            <p><span class="score-legend-dot" style="background:#34c88a"></span>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
+            <p><span class="score-legend-dot" style="background:#ff9f43"></span>발표 속도: <span id="pacingScore">-</span></p>
+          </div>
         </div>
 
         <div
@@ -189,6 +196,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="module" src="./js/analysis.js"></script>
 </body>
 </html>

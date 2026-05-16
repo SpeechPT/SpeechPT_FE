@@ -1,45 +1,13 @@
-import { API_BASE_URL, fetchJson, getAccessToken, setTokens, clearTokens, setTokensFromUrlParams } from "./auth.js";
+import { API_BASE_URL, fetchJson, getAccessToken, clearTokens } from "./auth.js";
 
 const noteGrid = document.getElementById("noteGrid");
 const createNoteCard = document.getElementById("createNoteCard");
 const noticeText = document.querySelector(".notice-bar p");
-const guestHomeSection = document.getElementById("guestHomeSection");
-const memberWorkspaceSection = document.getElementById("memberWorkspaceSection");
 let currentView = "grid";
 let currentNotes = [];
 
 function setNotice(message) {
-  if (noticeText) {
-    noticeText.textContent = message;
-  }
-}
-
-function setWorkspaceVisibility(isLoggedIn) {
-  guestHomeSection?.classList.toggle("is-hidden", isLoggedIn);
-  memberWorkspaceSection?.classList.toggle("is-hidden", !isLoggedIn);
-
-  const loginLink = document.getElementById("loginMenuLink");
-  const logoutButton = document.getElementById("logoutButton");
-  if (loginLink) {
-    loginLink.classList.toggle("is-hidden", isLoggedIn);
-  }
-  if (logoutButton) {
-    logoutButton.classList.toggle("is-hidden", !isLoggedIn);
-  }
-}
-
-function openLoginModal() {
-  const loginModalBackdrop = document.getElementById("loginModalBackdrop");
-  if (loginModalBackdrop) {
-    loginModalBackdrop.classList.add("active");
-  }
-}
-
-function closeLoginModal() {
-  const loginModalBackdrop = document.getElementById("loginModalBackdrop");
-  if (loginModalBackdrop) {
-    loginModalBackdrop.classList.remove("active");
-  }
+  if (noticeText) noticeText.textContent = message;
 }
 
 function moveToAnalysisPage(noteId) {
@@ -91,10 +59,7 @@ function createNoteCardElement(note) {
     card.appendChild(label);
   }
 
-  card.addEventListener("click", () => {
-    moveToAnalysisPage(note.note_id);
-  });
-
+  card.addEventListener("click", () => moveToAnalysisPage(note.note_id));
   card.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -107,11 +72,8 @@ function createNoteCardElement(note) {
 
 function renderNotes(notes, animate = false) {
   currentNotes = notes;
-  if (!noteGrid) {
-    return;
-  }
-  const existingCards = noteGrid.querySelectorAll(".note-card:not(.add-card)");
-  existingCards.forEach((card) => card.remove());
+  if (!noteGrid) return;
+  noteGrid.querySelectorAll(".note-card:not(.add-card)").forEach((card) => card.remove());
 
   notes.forEach((note, index) => {
     const card = createNoteCardElement(note);
@@ -124,48 +86,29 @@ function renderNotes(notes, animate = false) {
 }
 
 function updateViewMode() {
-  if (!noteGrid || !memberWorkspaceSection || memberWorkspaceSection.classList.contains("is-hidden")) {
-    return;
-  }
-
   const addCardElement = document.getElementById("createNoteCard");
-
   if (currentView === "list") {
-    noteGrid.classList.add("list-view");
-    if (addCardElement) {
-      addCardElement.classList.add("list-card");
-    }
+    noteGrid?.classList.add("list-view");
+    addCardElement?.classList.add("list-card");
   } else {
-    noteGrid.classList.remove("list-view");
-    if (addCardElement) {
-      addCardElement.classList.remove("list-card");
-    }
+    noteGrid?.classList.remove("list-view");
+    addCardElement?.classList.remove("list-card");
   }
 }
 
 function switchView(newView) {
   if (currentView === newView) return;
-
-  noteGrid.classList.add("is-switching");
-
+  noteGrid?.classList.add("is-switching");
   setTimeout(() => {
     currentView = newView;
     updateViewMode();
     renderNotes(currentNotes, true);
-    noteGrid.classList.remove("is-switching");
+    noteGrid?.classList.remove("is-switching");
   }, 180);
 }
 
 async function fetchNotes() {
-  if (!getAccessToken()) {
-    setWorkspaceVisibility(false);
-    setNotice("로그인이 필요합니다. 로그인 후 이용해주세요.");
-    return;
-  }
-
-  setWorkspaceVisibility(true);
   setNotice("노트 목록을 불러오는 중입니다.");
-
   const data = await fetchJson(`${API_BASE_URL}/notes`);
   renderNotes(data.items ?? [], true);
 
@@ -173,42 +116,19 @@ async function fetchNotes() {
     setNotice("아직 생성된 노트가 없습니다. 새 노트를 추가해보세요.");
     return;
   }
-
   setNotice(`총 ${data.total}개의 노트를 불러왔습니다.`);
 }
 
 function openCreateNoteModal() {
-  const createNoteModalBackdrop = document.getElementById("createNoteModalBackdrop");
-  const createNoteTitleInput = document.getElementById("createNoteTitleInput");
-  const createNoteDescriptionInput = document.getElementById("createNoteDescriptionInput");
-
-  if (createNoteTitleInput) {
-    createNoteTitleInput.value = "";
-  }
-  if (createNoteDescriptionInput) {
-    createNoteDescriptionInput.value = "";
-  }
-
-  if (createNoteModalBackdrop) {
-    createNoteModalBackdrop.classList.add("active");
-  }
+  const titleInput = document.getElementById("createNoteTitleInput");
+  const descInput = document.getElementById("createNoteDescriptionInput");
+  if (titleInput) titleInput.value = "";
+  if (descInput) descInput.value = "";
+  document.getElementById("createNoteModalBackdrop")?.classList.add("active");
 }
 
 function closeCreateNoteModal() {
-  const createNoteModalBackdrop = document.getElementById("createNoteModalBackdrop");
-  if (createNoteModalBackdrop) {
-    createNoteModalBackdrop.classList.remove("active");
-  }
-}
-
-async function createNote() {
-  if (!getAccessToken()) {
-    openLoginModal();
-    setNotice("로그인이 필요합니다. 노트를 생성하려면 로그인해주세요.");
-    return;
-  }
-
-  openCreateNoteModal();
+  document.getElementById("createNoteModalBackdrop")?.classList.remove("active");
 }
 
 async function submitCreateNote() {
@@ -230,13 +150,8 @@ async function submitCreateNote() {
   try {
     const createdNote = await fetchJson(`${API_BASE_URL}/notes`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        description,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description }),
     });
     setNotice("새 노트를 생성했습니다. 분석 페이지로 이동합니다.");
     closeCreateNoteModal();
@@ -251,292 +166,64 @@ async function submitCreateNote() {
   }
 }
 
-function openLogoutConfirmModal() {
-  const logoutConfirmModalBackdrop = document.getElementById("logoutConfirmModalBackdrop");
-  if (logoutConfirmModalBackdrop) {
-    logoutConfirmModalBackdrop.classList.add("active");
-  }
-}
-
-function closeLogoutConfirmModal() {
-  const logoutConfirmModalBackdrop = document.getElementById("logoutConfirmModalBackdrop");
-  if (logoutConfirmModalBackdrop) {
-    logoutConfirmModalBackdrop.classList.remove("active");
-  }
-}
-
-async function doLogout() {
-  clearTokens();
-  setWorkspaceVisibility(false);
-  currentNotes = [];
-  renderNotes([]);
-  setNotice("로그아웃 되었습니다.");
-  closeLogoutConfirmModal();
-}
-
-async function doLogin(payload) {
-  const tokens = await fetchJson(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  setTokens(tokens);
-  updateLoginLink();
-  setNotice("로그인이 완료되었습니다.");
-  closeLoginModal();
-  await fetchNotes();
-}
-
-function setupLoginModal() {
-  const loginModal = document.getElementById("loginModalBackdrop");
-  const closeButton = document.getElementById("closeLoginModalButton");
-  const loginLink = document.getElementById("loginMenuLink");
-  const loginForm = document.getElementById("loginForm");
-  const googleLoginButton = document.querySelector(".signup-links button:nth-child(1)");
-  const heroLoginButton = document.getElementById("heroLoginButton");
-  const heroGoogleButton = document.getElementById("heroGoogleButton");
-
-  if (loginLink) {
-    loginLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      openLoginModal();
-    });
-  }
-
-  if (closeButton) {
-    closeButton.addEventListener("click", closeLoginModal);
-  }
-
-  if (loginModal) {
-    loginModal.addEventListener("click", (e) => {
-      if (e.target === loginModal) {
-        closeLoginModal();
-      }
-    });
-  }
-
-  function isGoogleEmail(email) {
-    return typeof email === "string" && email.trim().toLowerCase().endsWith("@gmail.com");
-  }
-
-  async function submitLoginForm() {
-    const email = loginForm.querySelector("input[type='email']").value;
-    const password = loginForm.querySelector("input[type='password']").value;
-
-    if (isGoogleEmail(email)) {
-      const encodedEmail = encodeURIComponent(email.trim().toLowerCase());
-      window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google&login_hint=${encodedEmail}&auto=true`;
-      return;
-    }
-
-    try {
-      await doLogin({ email, password, provider: "local" });
-    } catch (error) {
-      console.error(error);
-      window.alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
-    }
-  }
-
-  if (loginForm) {
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      await submitLoginForm();
-    });
-
-    const loginSubmitButton = loginForm.querySelector("button[type='submit']");
-    if (loginSubmitButton) {
-      loginSubmitButton.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await submitLoginForm();
-      });
-    }
-  }
-
-  if (googleLoginButton) {
-    googleLoginButton.addEventListener("click", () => {
-      window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google`;
-    });
-  }
-
-  heroLoginButton?.addEventListener("click", openLoginModal);
-  heroGoogleButton?.addEventListener("click", () => {
-    window.location.href = `${API_BASE_URL}/auth/oauth/login?provider=google`;
-  });
-}
-
 function setupCreateNoteModal() {
   const createNoteModal = document.getElementById("createNoteModalBackdrop");
-  const closeCreateNoteModalButton = document.getElementById("closeCreateNoteModalButton");
-  const cancelCreateNoteButton = document.getElementById("cancelCreateNoteButton");
-  const confirmCreateNoteButton = document.getElementById("confirmCreateNoteButton");
-
-  if (createNoteModal) {
-    createNoteModal.addEventListener("click", (e) => {
-      if (e.target === createNoteModal) {
-        closeCreateNoteModal();
-      }
-    });
-  }
-
-  if (closeCreateNoteModalButton) {
-    closeCreateNoteModalButton.addEventListener("click", closeCreateNoteModal);
-  }
-
-  if (cancelCreateNoteButton) {
-    cancelCreateNoteButton.addEventListener("click", closeCreateNoteModal);
-  }
-
-  if (confirmCreateNoteButton) {
-    confirmCreateNoteButton.addEventListener("click", submitCreateNote);
-  }
+  createNoteModal?.addEventListener("click", (e) => {
+    if (e.target === createNoteModal) closeCreateNoteModal();
+  });
+  document.getElementById("closeCreateNoteModalButton")?.addEventListener("click", closeCreateNoteModal);
+  document.getElementById("cancelCreateNoteButton")?.addEventListener("click", closeCreateNoteModal);
+  document.getElementById("confirmCreateNoteButton")?.addEventListener("click", submitCreateNote);
 }
 
 function setupLogoutModal() {
-  const logoutButton = document.getElementById("logoutButton");
   const logoutConfirmModal = document.getElementById("logoutConfirmModalBackdrop");
-  const cancelLogoutButton = document.getElementById("cancelLogoutButton");
-  const confirmLogoutButton = document.getElementById("confirmLogoutButton");
-
-  if (logoutButton) {
-    logoutButton.addEventListener("click", openLogoutConfirmModal);
-  }
-
-  if (logoutConfirmModal) {
-    logoutConfirmModal.addEventListener("click", (e) => {
-      if (e.target === logoutConfirmModal) {
-        closeLogoutConfirmModal();
-      }
-    });
-  }
-
-  if (cancelLogoutButton) {
-    cancelLogoutButton.addEventListener("click", closeLogoutConfirmModal);
-  }
-
-  if (confirmLogoutButton) {
-    confirmLogoutButton.addEventListener("click", doLogout);
-  }
+  document.getElementById("logoutButton")?.addEventListener("click", () => {
+    logoutConfirmModal?.classList.add("active");
+  });
+  logoutConfirmModal?.addEventListener("click", (e) => {
+    if (e.target === logoutConfirmModal) logoutConfirmModal.classList.remove("active");
+  });
+  document.getElementById("cancelLogoutButton")?.addEventListener("click", () => {
+    logoutConfirmModal?.classList.remove("active");
+  });
+  document.getElementById("confirmLogoutButton")?.addEventListener("click", () => {
+    clearTokens();
+    window.location.href = "index.html";
+  });
 }
 
 function setupViewToggle() {
   const gridButton = document.querySelector(".view-toggle button:nth-child(1)");
   const listButton = document.querySelector(".view-toggle button:nth-child(2)");
-
-  if (gridButton && listButton) {
-    gridButton.addEventListener("click", () => {
-      gridButton.classList.add("active");
-      listButton.classList.remove("active");
-      switchView("grid");
-    });
-
-    listButton.addEventListener("click", () => {
-      listButton.classList.add("active");
-      gridButton.classList.remove("active");
-      switchView("list");
-    });
-  }
-}
-
-function initBanner() {
-  const banner = document.getElementById("landingBanner");
-  if (!banner) return;
-
-  const track = document.getElementById("bannerTrack");
-  const progressFill = document.getElementById("bannerProgressFill");
-  const dots = banner.querySelectorAll(".banner-dot");
-  const TOTAL = dots.length;
-  const INTERVAL = 5000;
-
-  let current = 0;
-  let timer = null;
-
-  function goTo(index) {
-    current = ((index % TOTAL) + TOTAL) % TOTAL;
-    if (track) track.style.transform = `translateX(-${current * 100}%)`;
-    dots.forEach((d, i) => d.classList.toggle("active", i === current));
-    resetProgress();
-  }
-
-  function resetProgress() {
-    if (!progressFill) return;
-    progressFill.style.transition = "none";
-    progressFill.style.width = "0%";
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        progressFill.style.transition = `width ${INTERVAL}ms linear`;
-        progressFill.style.width = "100%";
-      });
-    });
-  }
-
-  function startTimer() {
-    clearInterval(timer);
-    timer = setInterval(() => goTo(current + 1), INTERVAL);
-  }
-
-  banner.querySelector("#bannerNext")?.addEventListener("click", () => {
-    goTo(current + 1);
-    startTimer();
+  gridButton?.addEventListener("click", () => {
+    gridButton.classList.add("active");
+    listButton?.classList.remove("active");
+    switchView("grid");
   });
-
-  banner.querySelector("#bannerPrev")?.addEventListener("click", () => {
-    goTo(current - 1);
-    startTimer();
+  listButton?.addEventListener("click", () => {
+    listButton.classList.add("active");
+    gridButton?.classList.remove("active");
+    switchView("list");
   });
-
-  dots.forEach((dot) => {
-    dot.addEventListener("click", () => {
-      goTo(Number(dot.dataset.index));
-      startTimer();
-    });
-  });
-
-  banner.addEventListener("mouseenter", () => {
-    clearInterval(timer);
-    if (progressFill) {
-      const pct = (parseFloat(progressFill.style.width) || 0);
-      progressFill.style.transition = "none";
-      progressFill.style.width = pct + "%";
-    }
-  });
-
-  banner.addEventListener("mouseleave", () => {
-    goTo(current);
-    startTimer();
-  });
-
-  goTo(0);
-  startTimer();
 }
 
 async function initNotePage() {
-  if (!noteGrid || !createNoteCard) {
+  if (!getAccessToken()) {
+    window.location.href = "index.html";
     return;
   }
 
-  const restored = setTokensFromUrlParams();
-  if (restored) {
-    setNotice("Google 로그인이 완료되었습니다.");
-  }
+  document.getElementById("logoutButton")?.classList.remove("is-hidden");
 
-  initBanner();
-  setWorkspaceVisibility(Boolean(getAccessToken()));
-  createNoteCard.addEventListener("click", createNote);
-  setupLoginModal();
+  createNoteCard?.addEventListener("click", openCreateNoteModal);
+  setupCreateNoteModal();
   setupLogoutModal();
   setupViewToggle();
-  setupCreateNoteModal();
+
   const gridButton = document.querySelector(".view-toggle button:nth-child(1)");
   gridButton?.classList.add("active");
   updateViewMode();
-
-  if (!getAccessToken()) {
-    setNotice("로그인 후 내 노트 목록과 새 노트 추가 기능을 사용할 수 있습니다.");
-    return;
-  }
 
   try {
     await fetchNotes();
@@ -546,4 +233,9 @@ async function initNotePage() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", initNotePage);
+document.addEventListener("DOMContentLoaded", () => {
+  initNotePage();
+  document.querySelector(".logo-img")?.addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+});

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpeechPT</title>
+  <link rel="stylesheet" href="./css/common.css?v=20260513-2" />
+  <link rel="stylesheet" href="./css/note.css?v=20260513-2" />
+  <style>
+    /* ── 로그인 상태 랜딩 ── */
+    .logged-in-panel { display: none; }
+
+    #guestHomeSection.is-logged-in .landing-actions,
+    #guestHomeSection.is-logged-in .landing-description,
+    #guestHomeSection.is-logged-in .landing-preview-card,
+    #guestHomeSection.is-logged-in .landing-banner,
+    #guestHomeSection.is-logged-in .landing-notice-band { display: none !important; }
+
+    #guestHomeSection.is-logged-in .landing-copy h1 {
+      font-size: clamp(24px, 3vw, 40px);
+    }
+
+    #guestHomeSection.is-logged-in .logged-in-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 28px;
+      min-height: min(480px, 60vh);
+      background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(246,250,255,0.96));
+      border: 1px solid rgba(133,192,255,0.24);
+      border-radius: 28px;
+      box-shadow: 0 18px 44px rgba(111,155,210,0.12), inset 0 1px 0 rgba(255,255,255,0.72);
+      backdrop-filter: blur(14px);
+    }
+
+    .logged-in-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .dashboard-count {
+      font-size: 12px;
+      color: #7eaacc;
+      font-weight: 600;
+    }
+
+    .dashboard-note-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dashboard-note-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      background: rgba(79,149,255,0.05);
+      border: 1px solid rgba(79,149,255,0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .dashboard-note-item:hover { background: rgba(79,149,255,0.12); }
+
+    .dashboard-note-thumb {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #a084ee, #f070a0);
+      flex-shrink: 0;
+    }
+
+    .dashboard-note-info { flex: 1; min-width: 0; }
+
+    .dashboard-note-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a2d4e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dashboard-note-date { font-size: 11px; color: #8a9ab0; margin-top: 2px; }
+
+    .dashboard-note-empty {
+      color: #b0b8c8;
+      font-size: 13px;
+      text-align: center;
+      padding: 24px 0;
+      list-style: none;
+    }
+
+    .dashboard-scroll-btn {
+      margin-top: 16px;
+      padding: 9px 18px;
+      border: 1px solid rgba(79,149,255,0.25);
+      border-radius: 999px;
+      background: transparent;
+      color: #3f8cff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: background 0.15s;
+    }
+
+    .dashboard-scroll-btn:hover { background: rgba(79,149,255,0.08); }
+
+    .logo-img { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="note-page">
+    <header class="top-bar">
+      <img src="./assets/logo.png" alt="SpeechPT" class="logo-img" />
+
+      <nav class="top-menu">
+        <a href="#" id="loginMenuLink">로그인</a>
+        <button id="logoutButton" class="is-hidden">로그아웃</button>
+      </nav>
+    </header>
+
+    <section class="notice-bar">
+      <p>ver 0.0.1 테스트중</p>
+    </section>
+
+    <section class="landing-shell" id="guestHomeSection">
+      <div class="landing-hero">
+        <div class="landing-copy">
+          <p class="landing-eyebrow">SpeechPT Presentation Studio</p>
+          <h1>발표 자료와 음성을 함께 분석하는 개인 발표 워크스페이스</h1>
+          <p class="landing-description">
+            슬라이드와 발표 음성을 업로드하면, 발표 흐름과 전달 안정성, 핵심 개선 포인트를 한 곳에서 정리할 수 있습니다.
+          </p>
+          <div class="landing-actions">
+            <button type="button" id="heroLoginButton" class="landing-primary-button">로그인하고 시작하기</button>
+            <button type="button" id="heroGoogleButton" class="landing-secondary-button">Gmail로 계속하기</button>
+          </div>
+        </div>
+
+        <!-- 로그인 상태일 때 표시되는 노트 대시보드 -->
+        <div class="logged-in-panel" id="loggedInPanel">
+          <div class="logged-in-panel-header">
+            <span class="landing-preview-chip" style="margin-bottom:0">내 노트</span>
+            <span class="dashboard-count" id="dashboardNoteCount"></span>
+          </div>
+          <ul class="dashboard-note-list" id="dashboardNoteList">
+            <li class="dashboard-note-empty">노트를 불러오는 중입니다...</li>
+          </ul>
+          <button class="dashboard-scroll-btn" id="scrollToWorkspaceBtn">전체 노트 보기 →</button>
+        </div>
+
+        <div class="landing-preview-card">
+          <div class="landing-preview-chip">AI Feedback Workspace</div>
+          <div class="landing-preview-window">
+            <div class="preview-pane preview-pane-left">
+              <div class="preview-slide"></div>
+              <div class="preview-lines">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+            <div class="preview-pane preview-pane-right">
+              <div class="preview-badge-row">
+                <span></span>
+                <span></span>
+              </div>
+              <div class="preview-card-list">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-notice-band">
+        <div class="landing-notice-inner">
+          <span class="landing-notice-tag">공지사항</span>
+          <div class="landing-notice-body">
+            <p class="landing-notice-title">SpeechPT v0.0.1 베타 출시</p>
+            <p class="landing-notice-text">현재 베타 테스트 중입니다. 오류나 개선 의견은 고객센터로 제보해 주세요.</p>
+          </div>
+          <span class="landing-notice-date">2026.05.06</span>
+        </div>
+      </div>
+
+      <!-- 소개 배너 캐러셀 -->
+      <div class="landing-banner" id="landingBanner">
+        <div class="banner-track" id="bannerTrack">
+
+          <!-- Slide 1: 분석 기능 -->
+          <div class="banner-slide slide-theme-blue">
+            <div class="slide-text">
+              <span class="slide-tag">Core Feature</span>
+              <h2>발표 자료 업로드만 하면<br>AI가 전부 분석합니다</h2>
+              <p>PDF·PPT와 발표 음성을 함께 올리면, 내용 커버리지부터 전달 안정성, 발표 속도까지 수초 내에 리포트를 생성합니다.</p>
+            </div>
+            <div class="slide-visual">
+              <div class="vis-upload">
+                <div class="vis-doc vc-back"></div>
+                <div class="vis-doc vc-mid"></div>
+                <div class="vis-doc vc-front">
+                  <div class="vd-line"></div>
+                  <div class="vd-line vd-short"></div>
+                  <div class="vd-line"></div>
+                  <div class="vd-badge">PDF</div>
+                </div>
+                <div class="vis-upload-arrow">
+                  <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/><path d="M20 28V12M13 19l7-7 7 7" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 2: 연습 모드 -->
+          <div class="banner-slide slide-theme-purple">
+            <div class="slide-text">
+              <span class="slide-tag">Practice Mode</span>
+              <h2>마이크로 실시간 연습,<br>즉각적인 음성 피드백</h2>
+              <p>분석 결과를 목표 점수로 설정하고, 마이크를 통해 피치와 볼륨을 실시간으로 확인하며 발표를 반복 연습합니다.</p>
+            </div>
+            <div class="slide-visual">
+              <div class="vis-wave">
+                <div class="vis-wave-icon">
+                  <svg viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="27" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/><rect x="21" y="14" width="14" height="20" rx="7" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/><path d="M16 32c0 6.627 5.373 12 12 12s12-5.373 12-12" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="44" x2="28" y2="50" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="vis-wave-bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 3: 점수 분석 -->
+          <div class="banner-slide slide-theme-teal">
+            <div class="slide-text">
+              <span class="slide-tag">Analytics</span>
+              <h2>3가지 핵심 지표로<br>발표력을 수치화합니다</h2>
+              <p>내용 커버리지 · 전달 안정성 · 발표 속도. 객관적인 점수로 현재 발표 수준을 파악하고 개선 포인트를 찾습니다.</p>
+            </div>
+            <div class="slide-visual">
+              <div class="vis-scores">
+                <div class="vis-ring-item">
+                  <svg viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="7"/>
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="#5da8ff" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="40" transform="rotate(-90 40 40)"/>
+                  </svg>
+                  <strong>80</strong>
+                  <span>내용</span>
+                </div>
+                <div class="vis-ring-item">
+                  <svg viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="7"/>
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="#4aff8c" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="60" transform="rotate(-90 40 40)"/>
+                  </svg>
+                  <strong>70</strong>
+                  <span>전달</span>
+                </div>
+                <div class="vis-ring-item">
+                  <svg viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="7"/>
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="#ffda4a" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="80" transform="rotate(-90 40 40)"/>
+                  </svg>
+                  <strong>60</strong>
+                  <span>속도</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="banner-arrow banner-prev" id="bannerPrev">&#8249;</button>
+        <button class="banner-arrow banner-next" id="bannerNext">&#8250;</button>
+
+        <div class="banner-dots" id="bannerDots">
+          <button class="banner-dot active" data-index="0"></button>
+          <button class="banner-dot" data-index="1"></button>
+          <button class="banner-dot" data-index="2"></button>
+        </div>
+
+        <div class="banner-progress-bar">
+          <div class="banner-progress-fill" id="bannerProgressFill"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 로그인 모달 -->
+  <div class="modal-backdrop" id="loginModalBackdrop">
+    <div class="modal-content login-modal">
+      <button class="modal-close-button" id="closeLoginModalButton">×</button>
+      <h1 class="login-title">로그인</h1>
+
+      <form class="login-form" id="loginForm">
+        <input type="email" placeholder="이메일" required />
+        <input type="password" placeholder="패스워드" required />
+        <button type="submit">Sign In</button>
+      </form>
+
+      <div class="signup-links">
+        <button type="button">Gmail로 계속하기</button>
+      </div>
+
+      <p class="signup-text">Sign Up</p>
+    </div>
+  </div>
+
+  <!-- 로그아웃 확인 모달 -->
+  <div class="modal-backdrop" id="logoutConfirmModalBackdrop">
+    <div class="modal-content logout-confirm-modal">
+      <h1>로그아웃 확인</h1>
+      <p>정말 로그아웃 하시겠습니까?</p>
+      <div class="modal-actions">
+        <button type="button" id="cancelLogoutButton">취소</button>
+        <button type="button" id="confirmLogoutButton">로그아웃</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/index.js"></script>
+</body>
+</html>
