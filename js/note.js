@@ -1,10 +1,40 @@
-import { API_BASE_URL, fetchJson, getAccessToken, clearTokens } from "./auth.js";
+import { API_BASE_URL, fetchJson, authFetch, getAccessToken, clearTokens } from "./auth.js";
 
 const noteGrid = document.getElementById("noteGrid");
 const createNoteCard = document.getElementById("createNoteCard");
 const noticeText = document.querySelector(".notice-bar p");
 let currentView = "grid";
 let currentNotes = [];
+let openMenuDropdown = null;
+let openMenuBtn = null;
+
+function closeAllMenus() {
+  if (openMenuDropdown) {
+    openMenuDropdown.remove();
+    openMenuDropdown = null;
+  }
+  if (openMenuBtn) {
+    openMenuBtn.classList.remove("is-open");
+    openMenuBtn = null;
+  }
+}
+
+async function deleteNote(noteId, cardEl) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/notes/${noteId}`, { method: "DELETE" });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`삭제 실패: ${res.status}`);
+    }
+    currentNotes = currentNotes.filter((n) => n.note_id !== noteId);
+    cardEl.classList.add("is-deleting");
+    cardEl.addEventListener("animationend", () => cardEl.remove(), { once: true });
+    const remaining = currentNotes.length;
+    setNotice(remaining === 0 ? "아직 생성된 노트가 없습니다. 새 노트를 추가해보세요." : `총 ${remaining}개의 노트가 있습니다.`);
+  } catch (err) {
+    console.error(err);
+    setNotice("노트 삭제에 실패했습니다.");
+  }
+}
 
 function setNotice(message) {
   if (noticeText) noticeText.textContent = message;
@@ -58,6 +88,47 @@ function createNoteCardElement(note) {
     card.appendChild(thumbnail);
     card.appendChild(label);
   }
+
+  // ⋮ 메뉴 버튼
+  const menuBtn = document.createElement("button");
+  menuBtn.type = "button";
+  menuBtn.className = "note-menu-btn";
+  menuBtn.setAttribute("aria-label", "노트 메뉴");
+  menuBtn.innerHTML = "⋮";
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (openMenuDropdown) {
+      closeAllMenus();
+      return;
+    }
+
+    menuBtn.classList.add("is-open");
+    openMenuBtn = menuBtn;
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "note-action-dropdown";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "note-action-delete";
+    deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M1.75 3.5h10.5M5.25 3.5V2.625C5.25 2.28 5.53 2 5.875 2h2.25C8.47 2 8.75 2.28 8.75 2.625V3.5M10.5 3.5l-.656 7.875H4.156L3.5 3.5" stroke="#e03333" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>삭제`;
+    deleteBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      closeAllMenus();
+      deleteNote(note.note_id, card);
+    });
+
+    dropdown.appendChild(deleteBtn);
+    document.body.appendChild(dropdown);
+    openMenuDropdown = dropdown;
+
+    const rect = menuBtn.getBoundingClientRect();
+    dropdown.style.top = `${rect.bottom + 6}px`;
+    dropdown.style.right = `${window.innerWidth - rect.right}px`;
+  });
+  card.appendChild(menuBtn);
 
   card.addEventListener("click", () => moveToAnalysisPage(note.note_id));
   card.addEventListener("keydown", (event) => {
@@ -215,6 +286,9 @@ async function initNotePage() {
   }
 
   document.getElementById("logoutButton")?.classList.remove("is-hidden");
+
+  document.addEventListener("click", closeAllMenus);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllMenus(); });
 
   createNoteCard?.addEventListener("click", openCreateNoteModal);
   setupCreateNoteModal();

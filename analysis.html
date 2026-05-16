@@ -39,10 +39,7 @@
           </div>
 
           <p class="transcript-section-label" style="margin-top: 16px;">섹션 피드백</p>
-          <p id="noteDescription" class="note-description-text">노트 설명을 불러오는 중입니다.</p>
-          <ul id="sectionsList">
-            <li>분석이 완료되면 섹션별 피드백이 여기에 표시됩니다.</li>
-          </ul>
+          <div id="sectionsList"></div>
         </div>
       </section>
 
@@ -192,6 +189,91 @@
           <span class="mic-label" id="practiceMicLabel">마이크 시작</span>
         </button>
         <p class="practice-mic-status" id="practiceMicStatus">마이크 버튼을 눌러 연습을 시작하세요</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 파일 업로드 안내 모달 -->
+  <div class="welcome-modal-backdrop" id="welcomeModalBackdrop">
+    <div class="welcome-modal">
+      <button class="welcome-modal-close" id="closeWelcomeModal">×</button>
+
+      <div class="welcome-modal-header">
+        <div class="welcome-modal-logo">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="10" fill="url(#wg)"/>
+            <path d="M12 20c0 3.314 2.686 6 6 6s6-2.686 6-6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <rect x="14" y="10" width="8" height="12" rx="4" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="1.5"/>
+            <line x1="18" y1="26" x2="18" y2="30" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <defs><linearGradient id="wg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#4f95ff"/><stop offset="1" stop-color="#a084ee"/>
+            </linearGradient></defs>
+          </svg>
+        </div>
+        <h2 class="welcome-modal-title">발표 분석을 시작해보세요</h2>
+        <p class="welcome-modal-subtitle">발표 문서와 음성 파일을 업로드하면<br>AI가 3가지 핵심 지표로 분석합니다</p>
+      </div>
+
+      <div class="welcome-upload-grid">
+        <div class="welcome-upload-zone" id="welcomeDocZone">
+          <div class="welcome-upload-zone-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect x="4" y="2" width="16" height="20" rx="3" fill="#e8f0ff" stroke="#4f95ff" stroke-width="1.5"/>
+              <rect x="8" y="24" width="16" height="20" rx="3" fill="#d4e6ff" stroke="#4f95ff" stroke-width="1.5" transform="translate(0,-2)"/>
+              <path d="M8 9h8M8 13h5" stroke="#4f95ff" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M17 2v5h5" stroke="#4f95ff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="welcome-upload-label">발표 문서</p>
+          <p class="welcome-upload-type">PDF · PPT · PPTX</p>
+          <p class="welcome-upload-desc">슬라이드 내용을 AI가 파악해<br>내용 전달력을 측정합니다</p>
+          <span class="welcome-file-chip" id="welcomeDocName"></span>
+        </div>
+
+        <div class="welcome-upload-zone" id="welcomeAudioZone">
+          <div class="welcome-upload-zone-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="14" fill="#f0eaff"/>
+              <rect x="10" y="6" width="8" height="11" rx="4" fill="#e0d4ff" stroke="#a084ee" stroke-width="1.5"/>
+              <path d="M7 16c0 3.866 3.134 7 7 7s7-3.134 7-7" stroke="#a084ee" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="14" y1="23" x2="14" y2="26" stroke="#a084ee" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="welcome-upload-label">발표 음성</p>
+          <p class="welcome-upload-type">MP3 · WAV · M4A</p>
+          <p class="welcome-upload-desc">STT로 변환 후 음성 안정성과<br>발표 속도를 분석합니다</p>
+          <span class="welcome-file-chip" id="welcomeAudioName"></span>
+        </div>
+      </div>
+
+      <div class="welcome-metrics">
+        <p class="welcome-metrics-label">분석 결과로 확인할 수 있는 것</p>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#4f95ff"></span>
+          <div>
+            <strong>내용 전달력</strong>
+            <span>슬라이드 내용을 얼마나 말로 전달했는지</span>
+          </div>
+        </div>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#34c88a"></span>
+          <div>
+            <strong>전달 안정성</strong>
+            <span>음성이 흔들림 없이 안정적으로 전달됐는지</span>
+          </div>
+        </div>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#ff9f43"></span>
+          <div>
+            <strong>발표 속도</strong>
+            <span>WPM 기반 적절한 발표 속도인지</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="welcome-modal-actions">
+        <button class="welcome-skip-btn" id="welcomeSkipBtn">나중에 업로드</button>
+        <button class="welcome-start-btn" id="welcomeStartBtn" disabled>분석 시작하기 →</button>
       </div>
     </div>
   </div>

@@ -78,24 +78,101 @@ export function renderTranscript(element, transcript) {
   element.appendChild(text);
 }
 
-export function renderSections(element, sections) {
-  if (!element) {
-    return;
-  }
+function _fmtSec(sec) {
+  if (sec == null || isNaN(sec)) return "?";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `0:${s.toString().padStart(2, "0")}`;
+}
+
+export function renderSections(element, sections, onSectionPlay) {
+  if (!element) return;
 
   element.innerHTML = "";
 
   if (!sections || sections.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "섹션 결과가 아직 없습니다.";
-    element.appendChild(item);
+    const msg = document.createElement("p");
+    msg.className = "section-empty-msg";
+    msg.textContent = "섹션 결과가 아직 없습니다.";
+    element.appendChild(msg);
     return;
   }
 
   sections.forEach((section) => {
-    const item = document.createElement("li");
-    item.textContent = `${section.section_index}. ${section.title} (${section.start_time_sec}s ~ ${section.end_time_sec}s) / 점수: ${section.score} / ${section.feedback}`;
-    element.appendChild(item);
+    const card = document.createElement("div");
+    card.className = "section-card";
+
+    // ── 헤더 ──
+    const header = document.createElement("div");
+    header.className = "section-card-header";
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+
+    const leftCol = document.createElement("div");
+    leftCol.className = "section-card-left";
+
+    const numBadge = document.createElement("span");
+    numBadge.className = "section-num-badge";
+    numBadge.textContent = String(section.section_index ?? "-");
+
+    const titleEl = document.createElement("span");
+    titleEl.className = "section-card-title";
+    titleEl.textContent = section.title || "섹션";
+
+    leftCol.append(numBadge, titleEl);
+
+    const rightCol = document.createElement("div");
+    rightCol.className = "section-card-right";
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "section-card-time";
+    timeEl.textContent = `${_fmtSec(section.start_time_sec)} – ${_fmtSec(section.end_time_sec)}`;
+
+    const score = section.score ?? null;
+    const scoreEl = document.createElement("span");
+    const scoreClass = score === null ? "" : score >= 80 ? "good" : score >= 60 ? "fair" : "poor";
+    scoreEl.className = `section-score-badge ${scoreClass}`.trim();
+    scoreEl.textContent = score !== null ? String(score) : "-";
+
+    const chevron = document.createElement("span");
+    chevron.className = "section-chevron";
+    chevron.textContent = "›";
+
+    rightCol.append(timeEl, scoreEl, chevron);
+    header.append(leftCol, rightCol);
+
+    // ── 플레이어 패널 ──
+    const playerArea = document.createElement("div");
+    playerArea.className = "section-player-area";
+
+    let isOpen = false;
+
+    const toggle = () => {
+      if (isOpen) {
+        isOpen = false;
+        playerArea.classList.remove("is-open");
+        header.classList.remove("is-active");
+      } else {
+        element.querySelectorAll(".section-player-area.is-open").forEach((p) => {
+          p.classList.remove("is-open");
+        });
+        element.querySelectorAll(".section-card-header.is-active").forEach((h) => {
+          h.classList.remove("is-active");
+        });
+        isOpen = true;
+        playerArea.classList.add("is-open");
+        header.classList.add("is-active");
+        if (onSectionPlay) onSectionPlay(section, playerArea);
+      }
+    };
+
+    header.addEventListener("click", toggle);
+    header.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+
+    card.append(header, playerArea);
+    element.appendChild(card);
   });
 }
 
@@ -244,6 +321,85 @@ export function addMessageToChat(chatBodyElement, text, isUser = false, attachme
   chatBodyElement.scrollTop = chatBodyElement.scrollHeight;
 }
 
+export function createAnalysisProgressBubble(chatBodyElement) {
+  if (!chatBodyElement) return null;
+
+  const bubble = document.createElement("div");
+  bubble.className = "analysis-progress-bubble";
+
+  const header = document.createElement("div");
+  header.className = "analysis-progress-header";
+
+  const dots = document.createElement("div");
+  dots.className = "analysis-progress-dots";
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("span");
+    dot.className = "analysis-progress-dot";
+    dots.appendChild(dot);
+  }
+
+  const stage = document.createElement("span");
+  stage.className = "analysis-progress-stage";
+  stage.textContent = "분석 준비 중...";
+  header.append(dots, stage);
+
+  const track = document.createElement("div");
+  track.className = "analysis-progress-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "analysis-progress-bar-fill";
+  fill.style.width = "0%";
+  track.appendChild(fill);
+
+  const footer = document.createElement("div");
+  footer.className = "analysis-progress-footer";
+  const pct = document.createElement("span");
+  pct.textContent = "0%";
+  footer.appendChild(pct);
+
+  bubble.append(header, track, footer);
+  chatBodyElement.appendChild(bubble);
+  chatBodyElement.scrollTop = chatBodyElement.scrollHeight;
+
+  return bubble;
+}
+
+export function updateAnalysisProgressBubble(bubble, stageLabel, progress) {
+  if (!bubble) return;
+
+  const stage = bubble.querySelector(".analysis-progress-stage");
+  const fill = bubble.querySelector(".analysis-progress-bar-fill");
+  const pct = bubble.querySelector(".analysis-progress-footer span");
+
+  const safeProgress = typeof progress === "number" ? Math.min(Math.max(progress, 0), 100) : 0;
+  if (stage) stage.textContent = `${stageLabel}...`;
+  if (fill) fill.style.width = `${safeProgress}%`;
+  if (pct) pct.textContent = `${safeProgress}%`;
+
+  const parent = bubble.parentElement;
+  if (parent) parent.scrollTop = parent.scrollHeight;
+}
+
+export function finishAnalysisProgressBubble(bubble) {
+  if (!bubble) return null;
+
+  const stage = bubble.querySelector(".analysis-progress-stage");
+  const fill = bubble.querySelector(".analysis-progress-bar-fill");
+  const pct = bubble.querySelector(".analysis-progress-footer span");
+
+  if (stage) stage.textContent = "분석 완료!";
+  if (fill) fill.style.width = "100%";
+  if (pct) pct.textContent = "100%";
+  bubble.classList.add("is-done");
+
+  setTimeout(() => bubble.remove(), 1400);
+  return null;
+}
+
+export function removeAnalysisProgressBubble(bubble) {
+  if (bubble) bubble.remove();
+  return null;
+}
+
 export function updateAnalysisStatusMessage(chatBodyElement, text, analysisStatusMessage) {
   if (!chatBodyElement) {
     return analysisStatusMessage;
@@ -267,6 +423,25 @@ export function clearAnalysisStatusMessage(analysisStatusMessage) {
     analysisStatusMessage.remove();
   }
   return null;
+}
+
+export function addQuickReplies(chatBodyElement, chips, onClick) {
+  if (!chatBodyElement || !chips.length) return;
+  const row = document.createElement("div");
+  row.className = "quick-reply-row";
+  chips.forEach((text) => {
+    const btn = document.createElement("button");
+    btn.className = "quick-reply-chip";
+    btn.textContent = text;
+    btn.addEventListener("click", () => {
+      row.remove();
+      onClick(text);
+    });
+    row.appendChild(btn);
+  });
+  chatBodyElement.appendChild(row);
+  chatBodyElement.scrollTop = chatBodyElement.scrollHeight;
+  return row;
 }
 
 export function getSelectedAttachments(documentInput, audioInput) {
@@ -389,7 +564,7 @@ export function renderEmptyResult(elements) {
   setElementText(elements.summaryElement, "분석 결과가 아직 없습니다.");
   clearList(elements.strengthsListElement, "강점 데이터가 아직 없습니다.");
   clearList(elements.improvementsListElement, "개선점 데이터가 아직 없습니다.");
-  clearList(elements.sectionsListElement, "섹션 결과가 아직 없습니다.");
+  renderSections(elements.sectionsListElement, [], null);
 }
 
 /**

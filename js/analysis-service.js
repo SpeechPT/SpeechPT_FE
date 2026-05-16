@@ -66,11 +66,14 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   }
 }
 
-export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay }) {
   if (!noteId) return;
   try {
     const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
-    if (!result.is_ready) return;
+    if (!result.is_ready) {
+      if (onNoResult) onNoResult();
+      return;
+    }
 
     renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
     renderContentCoverage(
@@ -86,7 +89,7 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay);
     updateNotice("이전 분석 결과를 불러왔습니다.");
 
     if (result.document_upload_id) {
@@ -102,12 +105,15 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
       });
     }
   } catch (err) {
-    if (err.status === 404) return;
+    if (err.status === 404) {
+      if (onNoResult) onNoResult();
+      return;
+    }
     console.error("이전 분석 결과 로드 실패:", err);
   }
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay }) {
   if (!analysisId) {
     return;
   }
@@ -135,7 +141,7 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay);
     if (updateAnalysisProgress) {
       updateAnalysisProgress(result.stage ?? "완료", 100);
     }
