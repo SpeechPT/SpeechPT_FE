@@ -168,6 +168,15 @@ export function renderSections(element, sections, onSectionPlay) {
         playerArea.classList.add("is-open");
         header.classList.add("is-active");
         if (onSectionPlay) onSectionPlay(section, playerArea);
+        if (section.transcript) {
+          const transcriptEl = playerArea.querySelector(".section-slide-transcript");
+          if (!transcriptEl) {
+            const t = document.createElement("p");
+            t.className = "section-slide-transcript";
+            t.textContent = section.transcript;
+            playerArea.appendChild(t);
+          }
+        }
       }
     };
 

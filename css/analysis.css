@@ -428,9 +428,21 @@
 }
 
 .section-player-area.is-open {
-  max-height: 100px;
+  max-height: 400px;
   padding: 10px 14px 12px;
   border-top: 1px solid rgba(79, 149, 255, 0.12);
+}
+
+.section-slide-transcript {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: rgba(79, 149, 255, 0.05);
+  border-left: 3px solid rgba(79, 149, 255, 0.3);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a9ab0;
+  word-break: keep-all;
 }
 
 .section-player-controls {
