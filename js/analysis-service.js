@@ -37,6 +37,29 @@ export async function fetchNoteDetail(noteId) {
   return await fetchJson(`${API_BASE_URL}/notes/${noteId}`);
 }
 
+async function _restoreAudioForSections(uploadId) {
+  if (!uploadId) return null;
+  try {
+    const response = await authFetch(`${API_BASE_URL}/uploads/${uploadId}/file`);
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") ?? "";
+    let blob;
+    if (contentType.includes("application/json")) {
+      const json = await response.json();
+      if (!json.preview_url) return null;
+      const audioResponse = await fetch(json.preview_url);
+      if (!audioResponse.ok) return null;
+      blob = await audioResponse.blob();
+    } else {
+      blob = await response.blob();
+    }
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("음성 파일 복원 실패:", err);
+    return null;
+  }
+}
+
 async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   if (!uploadId || !previewElement) return;
   try {
@@ -66,7 +89,7 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   }
 }
 
-export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored }) {
   if (!noteId) return;
   try {
     const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
@@ -96,6 +119,12 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
       _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
     }
 
+    if (result.audio_upload_id && onAudioRestored) {
+      _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
+        if (blobUrl) onAudioRestored(blobUrl);
+      });
+    }
+
     if (onComplete) {
       onComplete({
         contentCoverage: result.scores?.content_coverage_user ?? null,
@@ -113,7 +142,7 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
   }
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored }) {
   if (!analysisId) {
     return;
   }
@@ -150,6 +179,12 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
 
     if (result.document_upload_id) {
       _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
+    }
+
+    if (result.audio_upload_id && onAudioRestored) {
+      _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
+        if (blobUrl) onAudioRestored(blobUrl);
+      });
     }
 
     if (onComplete) {

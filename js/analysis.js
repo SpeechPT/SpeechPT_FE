@@ -236,6 +236,12 @@ async function onHistoryPointClick(index, clickedAnalysisId) {
     setButtonDisabled,
     onSectionPlay: playSectionInPanel,
     onComplete: (scores) => { latestAnalysisScores = scores; },
+    onAudioRestored: (blobUrl) => {
+      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
+    },
   });
 }
 
@@ -687,6 +693,12 @@ async function fetchAnalysisResult() {
       loadHistoryChart(true);
       showPostAnalysisChips();
     },
+    onAudioRestored: (blobUrl) => {
+      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
+    },
   });
 }
 
@@ -893,6 +905,12 @@ function initAnalysisPage() {
       latestAnalysisScores = scores;
       hasAnalysisResult = true;
       showPostAnalysisChips();
+    },
+    onAudioRestored: (blobUrl) => {
+      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
     },
   });
 
