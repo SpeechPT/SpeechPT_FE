@@ -237,7 +237,7 @@ async function onHistoryPointClick(index, clickedAnalysisId) {
     onSectionPlay: playSectionInPanel,
     onComplete: (scores) => { latestAnalysisScores = scores; },
     onAudioRestored: (blobUrl) => {
-      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      revokeSectionAudio();
       sectionAudioBlobUrl = blobUrl;
       if (!sectionAudio) sectionAudio = new Audio();
       sectionAudio.src = blobUrl;
