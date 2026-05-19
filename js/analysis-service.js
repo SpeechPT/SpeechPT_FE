@@ -68,7 +68,7 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
 
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
-      // S3: backend returns presigned URL as JSON — use directly as iframe src (no CORS issue)
+      // S3: backend returns presigned URL as JSON — fetch as blob for PDF.js compatibility
       const json = await response.json();
       if (!json.preview_url) return;
       const fileInfo = {
@@ -76,7 +76,15 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
         type: json.content_type || "application/pdf",
         size: 0,
       };
-      renderDocumentPreview(previewElement, fileInfo, json.preview_url);
+      try {
+        const pdfResponse = await fetch(json.preview_url);
+        if (!pdfResponse.ok) throw new Error("fetch failed");
+        const blob = await pdfResponse.blob();
+        renderDocumentPreview(previewElement, fileInfo, URL.createObjectURL(blob));
+      } catch (_) {
+        // CORS fallback: pass presigned URL directly
+        renderDocumentPreview(previewElement, fileInfo, json.preview_url);
+      }
     } else {
       // Local: backend returns the file directly — create a blob URL
       const blob = await response.blob();

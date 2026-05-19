@@ -270,11 +270,76 @@ export function renderDocumentPreview(container, file, previewUrl) {
     container.className = "document-preview-panel pdf-preview";
     container.innerHTML = "";
 
-    const frame = document.createElement("iframe");
-    frame.className = "document-preview-frame";
-    frame.src = previewUrl;
-    frame.title = `${file.name} 미리보기`;
-    container.appendChild(frame);
+    // Reset PDF.js state
+    _pdfDoc = null;
+    _pdfCanvas = null;
+    _pdfPageInfoEl = null;
+    _pdfCurrentPage = 1;
+    _pdfRendering = false;
+    _pdfRenderQueued = null;
+
+    const navBar = document.createElement("div");
+    navBar.className = "pdf-nav-bar";
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "pdf-nav-btn";
+    prevBtn.textContent = "‹";
+    prevBtn.title = "이전 슬라이드";
+
+    const pageInfo = document.createElement("span");
+    pageInfo.className = "pdf-page-info";
+    pageInfo.textContent = "로딩 중...";
+    _pdfPageInfoEl = pageInfo;
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "pdf-nav-btn";
+    nextBtn.textContent = "›";
+    nextBtn.title = "다음 슬라이드";
+
+    navBar.append(prevBtn, pageInfo, nextBtn);
+
+    const canvasWrap = document.createElement("div");
+    canvasWrap.className = "pdf-canvas-wrap";
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "pdf-canvas";
+    canvasWrap.appendChild(canvas);
+    _pdfCanvas = canvas;
+
+    container.append(navBar, canvasWrap);
+
+    prevBtn.addEventListener("click", () => {
+      if (_pdfDoc && _pdfCurrentPage > 1) _renderPdfPage(_pdfCurrentPage - 1);
+    });
+    nextBtn.addEventListener("click", () => {
+      if (_pdfDoc && _pdfCurrentPage < _pdfDoc.numPages) _renderPdfPage(_pdfCurrentPage + 1);
+    });
+
+    const lib = window.pdfjsLib;
+    if (lib) {
+      lib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      lib.getDocument(previewUrl).promise
+        .then((doc) => {
+          _pdfDoc = doc;
+          pageInfo.textContent = `1 / ${doc.numPages}`;
+          return _renderPdfPage(1);
+        })
+        .catch((err) => {
+          console.error("PDF.js 로드 실패:", err);
+          pageInfo.textContent = "로드 실패";
+        });
+    } else {
+      // pdfjsLib not loaded — fallback to iframe
+      container.innerHTML = "";
+      const frame = document.createElement("iframe");
+      frame.className = "document-preview-frame";
+      frame.src = previewUrl;
+      frame.title = `${file.name} 미리보기`;
+      container.appendChild(frame);
+    }
     return;
   }
 
@@ -492,6 +557,64 @@ export function clearSelectedFiles(documentInput, audioInput, filePicker, render
   if (filePicker) {
     filePicker.value = "";
   }
+}
+
+// ── PDF.js viewer state ──────────────────────────────────────────
+let _pdfDoc = null;
+let _pdfCanvas = null;
+let _pdfPageInfoEl = null;
+let _pdfCurrentPage = 1;
+let _pdfRendering = false;
+let _pdfRenderQueued = null;
+
+async function _renderPdfPage(pageNum) {
+  if (!_pdfDoc || !_pdfCanvas) return;
+
+  if (_pdfRendering) {
+    _pdfRenderQueued = pageNum;
+    return;
+  }
+
+  _pdfRendering = true;
+  _pdfCurrentPage = pageNum;
+
+  try {
+    const page = await _pdfDoc.getPage(pageNum);
+    const canvasWrap = _pdfCanvas.parentElement;
+    const containerWidth = (canvasWrap?.clientWidth) || 560;
+    const baseVp = page.getViewport({ scale: 1 });
+    const scale = containerWidth / baseVp.width;
+    const viewport = page.getViewport({ scale });
+
+    _pdfCanvas.width = viewport.width;
+    _pdfCanvas.height = viewport.height;
+
+    const ctx = _pdfCanvas.getContext("2d");
+    const renderTask = page.render({ canvasContext: ctx, viewport });
+    await renderTask.promise;
+
+    if (_pdfPageInfoEl) {
+      _pdfPageInfoEl.textContent = `${_pdfCurrentPage} / ${_pdfDoc.numPages}`;
+    }
+  } catch (err) {
+    if (err?.name !== "RenderingCancelledException") {
+      console.error("PDF render error:", err);
+    }
+  }
+
+  _pdfRendering = false;
+
+  if (_pdfRenderQueued !== null) {
+    const next = _pdfRenderQueued;
+    _pdfRenderQueued = null;
+    _renderPdfPage(next);
+  }
+}
+
+export async function navigatePdfToPage(pageNum) {
+  if (!_pdfDoc) return;
+  const clamped = Math.max(1, Math.min(Math.round(pageNum), _pdfDoc.numPages));
+  await _renderPdfPage(clamped);
 }
 
 let _historyChart = null;

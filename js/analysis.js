@@ -12,6 +12,7 @@ import {
   setButtonDisabled,
   renderAttachedFileChip,
   renderDocumentPreview,
+  navigatePdfToPage,
   addMessageToChat,
   addQuickReplies,
   updateAnalysisStatusMessage,
@@ -438,10 +439,7 @@ function revokeDocumentPreviewUrl() {
 }
 
 function goToSlide(slideIndex) {
-  const frame = elements.documentPreviewElement?.querySelector("iframe.document-preview-frame");
-  if (!frame) return;
-  const base = frame.src.split("#")[0];
-  frame.src = `${base}#page=${slideIndex}`;
+  navigatePdfToPage(slideIndex);
 }
 
 function revokeSectionAudio() {
