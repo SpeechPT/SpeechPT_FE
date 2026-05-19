@@ -1444,19 +1444,18 @@
 
 .pdf-canvas-wrap {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   background: rgba(240, 245, 252, 0.5);
   min-height: 0;
 }
 
 .pdf-canvas {
   display: block;
-  max-width: 100%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .document-preview-card {

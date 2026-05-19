@@ -271,6 +271,7 @@ export function renderDocumentPreview(container, file, previewUrl) {
     container.innerHTML = "";
 
     // Reset PDF.js state
+    if (_pdfResizeObserver) { _pdfResizeObserver.disconnect(); _pdfResizeObserver = null; }
     _pdfDoc = null;
     _pdfCanvas = null;
     _pdfPageInfoEl = null;
@@ -316,6 +317,14 @@ export function renderDocumentPreview(container, file, previewUrl) {
     nextBtn.addEventListener("click", () => {
       if (_pdfDoc && _pdfCurrentPage < _pdfDoc.numPages) _renderPdfPage(_pdfCurrentPage + 1);
     });
+
+    // Re-render when the container is resized (panel resize or window zoom)
+    let _resizeTimer = null;
+    _pdfResizeObserver = new ResizeObserver(() => {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(() => _renderPdfPage(_pdfCurrentPage), 120);
+    });
+    _pdfResizeObserver.observe(canvasWrap);
 
     const lib = window.pdfjsLib;
     if (lib) {
@@ -566,6 +575,7 @@ let _pdfPageInfoEl = null;
 let _pdfCurrentPage = 1;
 let _pdfRendering = false;
 let _pdfRenderQueued = null;
+let _pdfResizeObserver = null;
 
 async function _renderPdfPage(pageNum) {
   if (!_pdfDoc || !_pdfCanvas) return;
@@ -582,12 +592,20 @@ async function _renderPdfPage(pageNum) {
     const page = await _pdfDoc.getPage(pageNum);
     const canvasWrap = _pdfCanvas.parentElement;
     const containerWidth = (canvasWrap?.clientWidth) || 560;
+    const containerHeight = (canvasWrap?.clientHeight) || 400;
+    const dpr = window.devicePixelRatio || 1;
     const baseVp = page.getViewport({ scale: 1 });
-    const scale = containerWidth / baseVp.width;
+    // contain fit: scale to fit both dimensions
+    const scaleW = containerWidth / baseVp.width;
+    const scaleH = containerHeight / baseVp.height;
+    const scale = Math.min(scaleW, scaleH) * dpr;
     const viewport = page.getViewport({ scale });
 
     _pdfCanvas.width = viewport.width;
     _pdfCanvas.height = viewport.height;
+    // CSS display size in CSS pixels (undoes DPR scaling)
+    _pdfCanvas.style.width = `${Math.round(viewport.width / dpr)}px`;
+    _pdfCanvas.style.height = `${Math.round(viewport.height / dpr)}px`;
 
     const ctx = _pdfCanvas.getContext("2d");
     const renderTask = page.render({ canvasContext: ctx, viewport });
