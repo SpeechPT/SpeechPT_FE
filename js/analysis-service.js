@@ -89,7 +89,7 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   }
 }
 
-export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored, onTranscriptClick }) {
   if (!noteId) return;
   try {
     const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
@@ -112,7 +112,7 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections, onSectionPlay);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay, onTranscriptClick);
     updateNotice("이전 분석 결과를 불러왔습니다.");
 
     if (result.document_upload_id) {
@@ -142,7 +142,7 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
   }
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored, onTranscriptClick }) {
   if (!analysisId) {
     return;
   }
@@ -170,7 +170,7 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections, onSectionPlay);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay, onTranscriptClick);
     if (updateAnalysisProgress) {
       updateAnalysisProgress(result.stage ?? "완료", 100);
     }

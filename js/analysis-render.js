@@ -85,7 +85,7 @@ function _fmtSec(sec) {
   return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `0:${s.toString().padStart(2, "0")}`;
 }
 
-export function renderSections(element, sections, onSectionPlay) {
+export function renderSections(element, sections, onSectionPlay, onTranscriptClick) {
   if (!element) return;
 
   element.innerHTML = "";
@@ -174,6 +174,11 @@ export function renderSections(element, sections, onSectionPlay) {
             const t = document.createElement("p");
             t.className = "section-slide-transcript";
             t.textContent = section.transcript;
+            if (onTranscriptClick) {
+              t.classList.add("is-clickable");
+              t.title = `슬라이드 ${section.section_index}로 이동`;
+              t.addEventListener("click", () => onTranscriptClick(section.section_index));
+            }
             playerArea.appendChild(t);
           }
         }

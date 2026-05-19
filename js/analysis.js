@@ -236,6 +236,7 @@ async function onHistoryPointClick(index, clickedAnalysisId) {
     setButtonDisabled,
     onSectionPlay: playSectionInPanel,
     onComplete: (scores) => { latestAnalysisScores = scores; },
+    onTranscriptClick: goToSlide,
     onAudioRestored: (blobUrl) => {
       revokeSectionAudio();
       sectionAudioBlobUrl = blobUrl;
@@ -434,6 +435,13 @@ function revokeDocumentPreviewUrl() {
 
   URL.revokeObjectURL(documentPreviewUrl);
   documentPreviewUrl = null;
+}
+
+function goToSlide(slideIndex) {
+  const frame = elements.documentPreviewElement?.querySelector("iframe.document-preview-frame");
+  if (!frame) return;
+  const base = frame.src.split("#")[0];
+  frame.src = `${base}#page=${slideIndex}`;
 }
 
 function revokeSectionAudio() {
@@ -693,6 +701,7 @@ async function fetchAnalysisResult() {
       loadHistoryChart(true);
       showPostAnalysisChips();
     },
+    onTranscriptClick: goToSlide,
     onAudioRestored: (blobUrl) => {
       if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
       sectionAudioBlobUrl = blobUrl;
@@ -900,6 +909,7 @@ function initAnalysisPage() {
     updateNotice,
     onNoResult: showWelcomeModal,
     onSectionPlay: playSectionInPanel,
+    onTranscriptClick: goToSlide,
     onComplete: (scores) => {
       setButtonDisabled(elements.practiceModeButton, false);
       latestAnalysisScores = scores;

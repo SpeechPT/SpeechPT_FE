@@ -445,6 +445,17 @@
   word-break: keep-all;
 }
 
+.section-slide-transcript.is-clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.section-slide-transcript.is-clickable:hover {
+  background: rgba(79, 149, 255, 0.12);
+  border-left-color: rgba(79, 149, 255, 0.7);
+  color: #4f95ff;
+}
+
 .section-player-controls {
   display: flex;
   align-items: center;
