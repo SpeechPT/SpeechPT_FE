@@ -592,20 +592,17 @@ async function _renderPdfPage(pageNum) {
     const page = await _pdfDoc.getPage(pageNum);
     const canvasWrap = _pdfCanvas.parentElement;
     const containerWidth = (canvasWrap?.clientWidth) || 560;
-    const containerHeight = (canvasWrap?.clientHeight) || 400;
     const dpr = window.devicePixelRatio || 1;
     const baseVp = page.getViewport({ scale: 1 });
-    // contain fit: scale to fit both dimensions
-    const scaleW = containerWidth / baseVp.width;
-    const scaleH = containerHeight / baseVp.height;
-    const scale = Math.min(scaleW, scaleH) * dpr;
+    // Render at DPR × width scale — CSS max-width/max-height handles contain fit
+    const scale = (containerWidth / baseVp.width) * dpr;
     const viewport = page.getViewport({ scale });
 
     _pdfCanvas.width = viewport.width;
     _pdfCanvas.height = viewport.height;
-    // CSS display size in CSS pixels (undoes DPR scaling)
-    _pdfCanvas.style.width = `${Math.round(viewport.width / dpr)}px`;
-    _pdfCanvas.style.height = `${Math.round(viewport.height / dpr)}px`;
+    // Clear any previously set inline dimensions so CSS max-width/max-height takes over
+    _pdfCanvas.style.width = "";
+    _pdfCanvas.style.height = "";
 
     const ctx = _pdfCanvas.getContext("2d");
     const renderTask = page.render({ canvasContext: ctx, viewport });
