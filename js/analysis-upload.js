@@ -12,12 +12,8 @@ const audioMimeTypes = [
   "audio/mp4",
   "audio/x-m4a",
 ];
-const docExtensions = [".pdf", ".ppt", ".pptx"];
-const docMimeTypes = [
-  "application/pdf",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-];
+const docExtensions = [".pdf"];
+const docMimeTypes = ["application/pdf"];
 
 export function buildPresignPayload(noteId, file, kind) {
   return {
@@ -190,7 +186,7 @@ export function handleDroppedFiles(files, documentInput, audioInput) {
       audioInput.files = dt.files;
       audioInput.dispatchEvent(new Event("change", { bubbles: true }));
     } else {
-      window.alert(`지원하지 않는 파일 형식입니다: ${file.name}\n\n지원 형식: PDF, PPT, PPTX, MP3, WAV, M4A`);
+      window.alert(`지원하지 않는 파일 형식입니다: ${file.name}\n\n지원 형식: PDF, MP3, WAV, M4A`);
     }
   }
 }

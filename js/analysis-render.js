@@ -231,23 +231,6 @@ export function renderAttachedFileChip(container, kind, file, removeCallback) {
   container.appendChild(chip);
 }
 
-function formatFileSize(size) {
-  if (!Number.isFinite(size) || size <= 0) {
-    return "크기 정보 없음";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = size;
-  let index = 0;
-
-  while (value >= 1024 && index < units.length - 1) {
-    value /= 1024;
-    index += 1;
-  }
-
-  const digits = value >= 10 || index === 0 ? 0 : 1;
-  return `${value.toFixed(digits)} ${units[index]}`;
-}
 
 export function renderDocumentPreviewLoading(container) {
   if (!container) return;
@@ -271,7 +254,7 @@ export function renderDocumentPreview(container, file, previewUrl) {
     container.className = "document-preview-empty";
     container.innerHTML = `
       <p class="document-preview-title">문서를 업로드하면 이곳에 미리보기가 표시됩니다.</p>
-      <p class="document-preview-subtext">PDF는 바로 볼 수 있고, PPT/PPTX는 파일 정보를 확인할 수 있습니다.</p>
+      <p class="document-preview-subtext">PDF 파일을 업로드하면 슬라이드 미리보기가 표시됩니다.</p>
     `;
     return;
   }
@@ -366,30 +349,11 @@ export function renderDocumentPreview(container, file, previewUrl) {
     return;
   }
 
-  container.className = "document-preview-card";
-  container.innerHTML = "";
-
-  const badge = document.createElement("span");
-  badge.className = "document-preview-badge";
-  badge.textContent = lowerName.endsWith(".pptx") ? "PPTX FILE" : "PPT FILE";
-
-  const meta = document.createElement("div");
-  meta.className = "document-preview-meta";
-
-  const fileName = document.createElement("p");
-  fileName.className = "document-preview-filename";
-  fileName.textContent = file.name;
-
-  const info = document.createElement("p");
-  info.className = "document-preview-info";
-  info.textContent = `브라우저에서 PPT/PPTX 슬라이드를 직접 렌더링할 수 없어 파일 정보만 먼저 표시합니다. 크기: ${formatFileSize(file.size)}`;
-
-  const subtext = document.createElement("p");
-  subtext.className = "document-preview-subtext";
-  subtext.textContent = "분석은 그대로 진행되며, 이후 서버 썸네일이나 슬라이드 이미지 API가 연결되면 실제 페이지 미리보기로 확장할 수 있습니다.";
-
-  meta.append(fileName, info, subtext);
-  container.append(badge, meta);
+  container.className = "document-preview-empty";
+  container.innerHTML = `
+    <p class="document-preview-title">PDF 파일만 미리보기를 지원합니다.</p>
+    <p class="document-preview-subtext">발표 문서는 PDF 형식으로 업로드해주세요.</p>
+  `;
 }
 
 export function addMessageToChat(chatBodyElement, text, isUser = false, attachments = []) {

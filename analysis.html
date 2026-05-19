@@ -20,7 +20,7 @@
         <div class="slide-preview">
           <div id="documentPreview" class="document-preview-empty">
             <p class="document-preview-title">문서를 업로드하면 이곳에 미리보기가 표시됩니다.</p>
-            <p class="document-preview-subtext">PDF는 바로 볼 수 있고, PPT/PPTX는 파일 정보를 확인할 수 있습니다.</p>
+            <p class="document-preview-subtext">PDF 파일을 업로드하면 슬라이드 미리보기가 표시됩니다.</p>
           </div>
         </div>
 
@@ -61,8 +61,8 @@
             <div id="attachedFiles" class="attached-files"></div>
             <div class="input-row">
               <input type="text" placeholder="질문을 입력하세요" />
-              <input type="file" id="filePicker" accept=".pdf,.ppt,.pptx,.mp3,.wav,.m4a" multiple hidden />
-              <input type="file" id="documentFile" accept=".pdf,.ppt,.pptx" hidden />
+              <input type="file" id="filePicker" accept=".pdf,.mp3,.wav,.m4a" multiple hidden />
+              <input type="file" id="documentFile" accept=".pdf" hidden />
               <input type="file" id="audioFile" accept=".mp3,.wav,.m4a" hidden />
               <button type="button" id="runAnalysisButton" title="전송">↑</button>
               <button type="button" id="attachFileButton">📎</button>
@@ -221,7 +221,7 @@
             </svg>
           </div>
           <p class="welcome-upload-label">발표 문서</p>
-          <p class="welcome-upload-type">PDF · PPT · PPTX</p>
+          <p class="welcome-upload-type">PDF</p>
           <p class="welcome-upload-desc">슬라이드 내용을 AI가 파악해<br>내용 전달력을 측정합니다</p>
           <span class="welcome-file-chip" id="welcomeDocName"></span>
         </div>
