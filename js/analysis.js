@@ -12,6 +12,7 @@ import {
   setButtonDisabled,
   renderAttachedFileChip,
   renderDocumentPreview,
+  renderDocumentPreviewLoading,
   navigatePdfToPage,
   addMessageToChat,
   addQuickReplies,
@@ -81,6 +82,9 @@ let analysisProgressBubble = null;
 let documentUploadId = null;
 let sectionAudio = null;
 let sectionAudioBlobUrl = null;
+let isAudioLoading = false;
+let activeSectionRef = null;
+let activePlayerElRef = null;
 let audioUploadId = null;
 let analysisId = null;
 let pollingTimer = null;
@@ -238,11 +242,22 @@ async function onHistoryPointClick(index, clickedAnalysisId) {
     onSectionPlay: playSectionInPanel,
     onComplete: (scores) => { latestAnalysisScores = scores; },
     onTranscriptClick: goToSlide,
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
     onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
       revokeSectionAudio();
       sectionAudioBlobUrl = blobUrl;
       if (!sectionAudio) sectionAudio = new Audio();
       sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
     },
   });
 }
@@ -460,13 +475,28 @@ function _fmtTime(sec) {
 }
 
 function playSectionInPanel(section, playerEl) {
+  activeSectionRef = section;
+  activePlayerElRef = playerEl;
   playerEl.innerHTML = "";
 
   if (!sectionAudioBlobUrl || !sectionAudio) {
-    const msg = document.createElement("p");
-    msg.className = "section-player-no-audio";
-    msg.textContent = "재생하려면 음성 파일을 다시 업로드해주세요.";
-    playerEl.appendChild(msg);
+    const wrap = document.createElement("div");
+    wrap.className = "section-player-no-audio";
+    if (isAudioLoading) {
+      wrap.classList.add("is-loading");
+      const dots = document.createElement("div");
+      dots.className = "section-player-loading-dots";
+      for (let i = 0; i < 3; i++) {
+        const d = document.createElement("span");
+        dots.appendChild(d);
+      }
+      const label = document.createElement("span");
+      label.textContent = "음성 파일 불러오는 중...";
+      wrap.append(dots, label);
+    } else {
+      wrap.textContent = "재생하려면 음성 파일을 다시 업로드해주세요.";
+    }
+    playerEl.appendChild(wrap);
     return;
   }
 
@@ -700,11 +730,22 @@ async function fetchAnalysisResult() {
       showPostAnalysisChips();
     },
     onTranscriptClick: goToSlide,
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
     onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
       if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
       sectionAudioBlobUrl = blobUrl;
       if (!sectionAudio) sectionAudio = new Audio();
       sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
     },
   });
 }
@@ -914,11 +955,22 @@ function initAnalysisPage() {
       hasAnalysisResult = true;
       showPostAnalysisChips();
     },
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
     onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
       if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
       sectionAudioBlobUrl = blobUrl;
       if (!sectionAudio) sectionAudio = new Audio();
       sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
     },
   });
 

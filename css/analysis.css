@@ -513,6 +513,56 @@
   margin: 0 !important;
 }
 
+.section-player-no-audio.is-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #5a85b0;
+}
+
+.section-player-loading-dots {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.section-player-loading-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4f95ff;
+  animation: floatDot 1.2s ease-in-out infinite;
+}
+
+.section-player-loading-dots span:nth-child(1) { animation-delay: 0s; }
+.section-player-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.section-player-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* 문서 미리보기 로딩 */
+.document-preview-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.document-preview-loader-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.document-preview-loader-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(130, 200, 255, 0.7);
+  animation: floatDot 1.2s ease-in-out infinite;
+}
+
+.document-preview-loader-dots span:nth-child(1) { animation-delay: 0s; }
+.document-preview-loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+.document-preview-loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+
 .chat-header {
   flex: 0 0 8vh;
   min-height: 64px;

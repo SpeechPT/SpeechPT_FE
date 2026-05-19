@@ -249,6 +249,19 @@ function formatFileSize(size) {
   return `${value.toFixed(digits)} ${units[index]}`;
 }
 
+export function renderDocumentPreviewLoading(container) {
+  if (!container) return;
+  container.className = "document-preview-empty";
+  container.innerHTML = `
+    <div class="document-preview-loader">
+      <div class="document-preview-loader-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="document-preview-title">문서 미리보기 불러오는 중...</p>
+    </div>
+  `;
+}
+
 export function renderDocumentPreview(container, file, previewUrl) {
   if (!container) {
     return;
@@ -262,6 +275,7 @@ export function renderDocumentPreview(container, file, previewUrl) {
     `;
     return;
   }
+
 
   const lowerName = file.name.toLowerCase();
   const isPdf = lowerName.endsWith(".pdf") || file.type === "application/pdf";

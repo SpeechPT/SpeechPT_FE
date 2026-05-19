@@ -97,7 +97,7 @@ async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   }
 }
 
-export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored, onTranscriptClick }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored, onAudioLoadStart, onDocumentLoadStart, onTranscriptClick }) {
   if (!noteId) return;
   try {
     const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
@@ -124,12 +124,15 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
     updateNotice("이전 분석 결과를 불러왔습니다.");
 
     if (result.document_upload_id) {
+      if (onDocumentLoadStart) onDocumentLoadStart();
       _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
     }
 
     if (result.audio_upload_id && onAudioRestored) {
+      if (onAudioLoadStart) onAudioLoadStart();
       _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
         if (blobUrl) onAudioRestored(blobUrl);
+        else if (onAudioLoadStart) onAudioLoadStart(false);
       });
     }
 
@@ -150,7 +153,7 @@ export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice
   }
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored, onTranscriptClick }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored, onAudioLoadStart, onDocumentLoadStart, onTranscriptClick }) {
   if (!analysisId) {
     return;
   }
@@ -186,12 +189,15 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     updateNotice("분석 결과를 불러왔습니다.");
 
     if (result.document_upload_id) {
+      if (onDocumentLoadStart) onDocumentLoadStart();
       _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
     }
 
     if (result.audio_upload_id && onAudioRestored) {
+      if (onAudioLoadStart) onAudioLoadStart();
       _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
         if (blobUrl) onAudioRestored(blobUrl);
+        else if (onAudioLoadStart) onAudioLoadStart(false);
       });
     }
 
