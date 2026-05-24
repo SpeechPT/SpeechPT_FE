@@ -356,8 +356,20 @@ function getAnalysisStatusText(stage, progress) {
   return `모델이 ${stageLabel} 중${dots} 현재 ${progressText} 진행 중입니다.`;
 }
 
-function updateAnalysisProgress(stage, progress) {
-  const statusText = getAnalysisStatusText(stage, progress);
+function updateAnalysisProgress(stage, progress, meta) {
+  // meta: { icon, text, etaText, elapsedText, warningMsg } (선택)
+  let statusText;
+  if (meta && meta.text) {
+    const pctText = `${Math.min(Math.max(progress, 0), 100)}%`;
+    const parts = [`${meta.icon || "⚙️"} ${meta.text}`, pctText];
+    if (meta.etaText) parts.push(meta.etaText);
+    statusText = parts.join(" · ");
+    if (meta.warningMsg) {
+      statusText += `\n⚠️ ${meta.warningMsg}`;
+    }
+  } else {
+    statusText = getAnalysisStatusText(stage, progress);
+  }
   updateAnalysisChatStatus(statusText);
 }
 
