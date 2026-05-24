@@ -652,8 +652,11 @@ function getStageLabel(stage) {
 function updateAnalysisProgress(stage, progress, meta) {
   // meta: { icon, text, etaText, elapsedText, warningMsg } (선택)
   let statusText;
+  const pct = Math.min(Math.max(Number(progress) || 0, 0), 100);
+  const pctText = `${pct}%`;
+
   if (meta && meta.text) {
-    const pctText = `${Math.min(Math.max(progress, 0), 100)}%`;
+    // 새 메타 데이터(실측 기반) 사용
     const parts = [`${meta.icon || "⚙️"} ${meta.text}`, pctText];
     if (meta.etaText) parts.push(meta.etaText);
     statusText = parts.join(" · ");
@@ -661,7 +664,12 @@ function updateAnalysisProgress(stage, progress, meta) {
       statusText += `\n⚠️ ${meta.warningMsg}`;
     }
   } else {
-    statusText = getAnalysisStatusText(stage, progress);
+    // Fallback: meta 없을 때 단순 텍스트 (구버전 호환 + 에러 방지)
+    if (stage === "finished" || pct === 100) {
+      statusText = "✅ 분석이 완료되었습니다. 결과를 확인해주세요.";
+    } else {
+      statusText = `⚙️ 분석 중 · ${stage || "preparing"} · ${pctText}`;
+    }
   }
   updateAnalysisChatStatus(statusText);
 }
