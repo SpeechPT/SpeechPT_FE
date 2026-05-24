@@ -393,7 +393,11 @@ export async function pollAnalysisStatus({ analysisId, pollingTimer, elements, u
       await fetchAnalysisResult();
       if (updateAnalysisProgress) {
         updateAnalysisProgress("finished", 100, {
-          icon: "✅", text: "완료", etaText: "", elapsedText: "", warningMsg: null,
+          icon: "✅",
+          text: "분석이 완료되었습니다. 결과를 확인하세요.",
+          etaText: "",
+          elapsedText: "",
+          warningMsg: null,
         });
       }
       setButtonDisabled(elements.runAnalysisButton, false);

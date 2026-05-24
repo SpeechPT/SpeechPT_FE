@@ -656,10 +656,14 @@ function updateAnalysisProgress(stage, progress, meta) {
   const pctText = `${pct}%`;
 
   if (meta && meta.text) {
-    // 새 메타 데이터(실측 기반) 사용
-    const parts = [`${meta.icon || "⚙️"} ${meta.text}`, pctText];
-    if (meta.etaText) parts.push(meta.etaText);
-    statusText = parts.join(" · ");
+    // 완료/실패 상태에서는 % 와 ETA 숨김 (메시지만 깔끔하게)
+    if (stage === "finished" || stage === "failed" || pct >= 100) {
+      statusText = `${meta.icon || "✅"} ${meta.text}`;
+    } else {
+      const parts = [`${meta.icon || "⚙️"} ${meta.text}`, pctText];
+      if (meta.etaText) parts.push(meta.etaText);
+      statusText = parts.join(" · ");
+    }
     if (meta.warningMsg) {
       statusText += `\n⚠️ ${meta.warningMsg}`;
     }
