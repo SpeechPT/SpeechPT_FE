@@ -1,5 +1,5 @@
 import { API_BASE_URL, fetchJson, uploadSelectedFiles } from "./analysis-upload.js";
-import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript, renderDocumentPreview } from "./analysis-render.js";
+import { renderEmptyResult, setElementText, renderTextList, renderSections, renderTranscript, renderDocumentPreview, renderContentCoverage } from "./analysis-render.js";
 import { authFetch } from "./auth.js";
 
 // ──────────────────────────────────────────────────────────────
@@ -165,6 +165,16 @@ export async function requestChatReply(sessionId, question, signal = null) {
   });
 }
 
+export async function fetchAnalysisHistory(noteId) {
+  if (!noteId) return [];
+  try {
+    return await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/history`);
+  } catch (err) {
+    console.error("분석 히스토리 로드 실패:", err);
+    return [];
+  }
+}
+
 export async function fetchNoteDetail(noteId) {
   if (!noteId) {
     throw new Error("note_id가 없습니다.");
@@ -173,54 +183,123 @@ export async function fetchNoteDetail(noteId) {
   return await fetchJson(`${API_BASE_URL}/notes/${noteId}`);
 }
 
+async function _restoreAudioForSections(uploadId) {
+  if (!uploadId) return null;
+  try {
+    const response = await authFetch(`${API_BASE_URL}/uploads/${uploadId}/file`);
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") ?? "";
+    let blob;
+    if (contentType.includes("application/json")) {
+      const json = await response.json();
+      if (!json.preview_url) return null;
+      const audioResponse = await fetch(json.preview_url);
+      if (!audioResponse.ok) return null;
+      blob = await audioResponse.blob();
+    } else {
+      blob = await response.blob();
+    }
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("음성 파일 복원 실패:", err);
+    return null;
+  }
+}
+
 async function _restoreDocumentPreview(uploadId, filename, previewElement) {
   if (!uploadId || !previewElement) return;
   try {
     const response = await authFetch(`${API_BASE_URL}/uploads/${uploadId}/file`);
     if (!response.ok) return;
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const fileInfo = { name: filename || "document", type: blob.type, size: blob.size };
-    renderDocumentPreview(previewElement, fileInfo, blobUrl);
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      // S3: backend returns presigned URL as JSON — fetch as blob for PDF.js compatibility
+      const json = await response.json();
+      if (!json.preview_url) return;
+      const fileInfo = {
+        name: json.filename || filename || "document",
+        type: json.content_type || "application/pdf",
+        size: 0,
+      };
+      try {
+        const pdfResponse = await fetch(json.preview_url);
+        if (!pdfResponse.ok) throw new Error("fetch failed");
+        const blob = await pdfResponse.blob();
+        renderDocumentPreview(previewElement, fileInfo, URL.createObjectURL(blob));
+      } catch (_) {
+        // CORS fallback: pass presigned URL directly
+        renderDocumentPreview(previewElement, fileInfo, json.preview_url);
+      }
+    } else {
+      // Local: backend returns the file directly — create a blob URL
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const fileInfo = { name: filename || "document", type: blob.type, size: blob.size };
+      renderDocumentPreview(previewElement, fileInfo, blobUrl);
+    }
   } catch (err) {
     console.error("문서 미리보기 복원 실패:", err);
   }
 }
 
-export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete }) {
+export async function fetchLatestAnalysisResult({ noteId, elements, updateNotice, onComplete, onNoResult, onSectionPlay, onAudioRestored, onAudioLoadStart, onDocumentLoadStart, onTranscriptClick }) {
   if (!noteId) return;
   try {
     const result = await fetchJson(`${API_BASE_URL}/notes/${noteId}/analyses/latest/result`);
-    if (!result.is_ready) return;
+    if (!result.is_ready) {
+      if (onNoResult) onNoResult();
+      return;
+    }
 
     renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
-    setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
+    renderContentCoverage(
+      elements.contentCoverageElement,
+      elements.reliabilityBadgeElement,
+      elements.reliabilityNoteElement,
+      elements.contentCoverageRowElement,
+      result.scores?.content_coverage_user ?? null,
+      result.reliability ?? null,
+    );
     setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
     setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay, onTranscriptClick);
     updateNotice("이전 분석 결과를 불러왔습니다.");
 
     if (result.document_upload_id) {
+      if (onDocumentLoadStart) onDocumentLoadStart();
       _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
+    }
+
+    if (result.audio_upload_id && onAudioRestored) {
+      if (onAudioLoadStart) onAudioLoadStart();
+      _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
+        if (blobUrl) onAudioRestored(blobUrl);
+        else if (onAudioLoadStart) onAudioLoadStart(false);
+      });
     }
 
     if (onComplete) {
       onComplete({
-        contentCoverage: result.scores?.content_coverage ?? null,
+        contentCoverage: result.scores?.content_coverage_user ?? null,
         deliveryStability: result.scores?.delivery_stability ?? null,
         pacingScore: result.scores?.pacing_score ?? null,
+        reliability: result.reliability ?? null,
       });
     }
   } catch (err) {
-    if (err.status === 404) return;
+    if (err.status === 404) {
+      if (onNoResult) onNoResult();
+      return;
+    }
     console.error("이전 분석 결과 로드 실패:", err);
   }
 }
 
-export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete }) {
+export async function fetchAnalysisResult({ analysisId, elements, updateNotice, updateAnalysisChatStatus, updateAnalysisProgress, setButtonDisabled, onComplete, onSectionPlay, onAudioRestored, onAudioLoadStart, onDocumentLoadStart, onTranscriptClick }) {
   if (!analysisId) {
     return;
   }
@@ -235,24 +314,45 @@ export async function fetchAnalysisResult({ analysisId, elements, updateNotice, 
     }
 
     renderTranscript(elements.transcriptTextElement, result.transcript ?? null);
-    setElementText(elements.contentCoverageElement, String(result.scores?.content_coverage ?? "-"));
+    renderContentCoverage(
+      elements.contentCoverageElement,
+      elements.reliabilityBadgeElement,
+      elements.reliabilityNoteElement,
+      elements.contentCoverageRowElement,
+      result.scores?.content_coverage_user ?? null,
+      result.reliability ?? null,
+    );
     setElementText(elements.deliveryStabilityElement, String(result.scores?.delivery_stability ?? "-"));
     setElementText(elements.pacingScoreElement, String(result.scores?.pacing_score ?? "-"));
     setElementText(elements.summaryElement, result.summary || "요약 데이터가 없습니다.");
     renderTextList(elements.strengthsListElement, result.strengths, "강점 데이터가 없습니다.");
     renderTextList(elements.improvementsListElement, result.improvements, "개선점 데이터가 없습니다.");
-    renderSections(elements.sectionsListElement, result.sections);
+    renderSections(elements.sectionsListElement, result.sections, onSectionPlay, onTranscriptClick);
     if (updateAnalysisProgress) {
       updateAnalysisProgress(result.stage ?? "완료", 100);
     }
     updateAnalysisChatStatus("분석이 완료되었습니다. 결과를 확인하세요.");
     updateNotice("분석 결과를 불러왔습니다.");
 
+    if (result.document_upload_id) {
+      if (onDocumentLoadStart) onDocumentLoadStart();
+      _restoreDocumentPreview(result.document_upload_id, result.document_filename, elements.documentPreviewElement);
+    }
+
+    if (result.audio_upload_id && onAudioRestored) {
+      if (onAudioLoadStart) onAudioLoadStart();
+      _restoreAudioForSections(result.audio_upload_id).then(blobUrl => {
+        if (blobUrl) onAudioRestored(blobUrl);
+        else if (onAudioLoadStart) onAudioLoadStart(false);
+      });
+    }
+
     if (onComplete) {
       onComplete({
-        contentCoverage: result.scores?.content_coverage ?? null,
+        contentCoverage: result.scores?.content_coverage_user ?? null,
         deliveryStability: result.scores?.delivery_stability ?? null,
         pacingScore: result.scores?.pacing_score ?? null,
+        reliability: result.reliability ?? null,
       });
     }
   } catch (error) {

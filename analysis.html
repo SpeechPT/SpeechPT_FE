@@ -10,6 +10,7 @@
 <body>
   <div class="analysis-page">
     <header class="analysis-header">
+      <img src="./assets/logo.png" alt="SpeechPT" class="logo-img" style="height:28px;cursor:pointer;margin-right:12px;display:block" id="logoHome" />
       <button class="back-button" id="backButton">← 노트 목록</button>
       <span class="analysis-header-title" id="noteTitle"></span>
     </header>
@@ -19,7 +20,7 @@
         <div class="slide-preview">
           <div id="documentPreview" class="document-preview-empty">
             <p class="document-preview-title">문서를 업로드하면 이곳에 미리보기가 표시됩니다.</p>
-            <p class="document-preview-subtext">PDF는 바로 볼 수 있고, PPT/PPTX는 파일 정보를 확인할 수 있습니다.</p>
+            <p class="document-preview-subtext">PDF 파일을 업로드하면 슬라이드 미리보기가 표시됩니다.</p>
           </div>
         </div>
 
@@ -32,16 +33,9 @@
         ></div>
 
         <div class="feedback-box transcript-box">
-          <p class="transcript-section-label">STT 변환 대본</p>
-          <div id="transcriptText" class="transcript-text-area">
-            <p class="transcript-placeholder">음성 파일을 업로드하고 분석을 실행하면 변환된 대본이 여기에 표시됩니다.</p>
-          </div>
-
-          <p class="transcript-section-label" style="margin-top: 16px;">섹션 피드백</p>
-          <p id="noteDescription" class="note-description-text">노트 설명을 불러오는 중입니다.</p>
-          <ul id="sectionsList">
-            <li>분석이 완료되면 섹션별 피드백이 여기에 표시됩니다.</li>
-          </ul>
+          <p class="transcript-section-label">대본&섹션 피드백</p>
+          <div id="transcriptText" hidden></div>
+          <div id="sectionsList"></div>
         </div>
       </section>
 
@@ -67,8 +61,8 @@
             <div id="attachedFiles" class="attached-files"></div>
             <div class="input-row">
               <input type="text" placeholder="질문을 입력하세요" />
-              <input type="file" id="filePicker" accept=".pdf,.ppt,.pptx,.mp3,.wav,.m4a" multiple hidden />
-              <input type="file" id="documentFile" accept=".pdf,.ppt,.pptx" hidden />
+              <input type="file" id="filePicker" accept=".pdf,.mp3,.wav,.m4a" multiple hidden />
+              <input type="file" id="documentFile" accept=".pdf" hidden />
               <input type="file" id="audioFile" accept=".mp3,.wav,.m4a" hidden />
               <button type="button" id="runAnalysisButton" title="전송">↑</button>
               <button type="button" id="attachFileButton">📎</button>
@@ -87,10 +81,19 @@
 
       <section class="right-panel">
         <div class="score-card score-card-primary">
-          <p>3개 핵심 점수</p>
-          <p>내용 커버리지: <span id="contentCoverageScore">-</span></p>
-          <p>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
-          <p>발표 속도: <span id="pacingScore">-</span></p>
+          <p class="history-chart-title">분석 히스토리</p>
+          <div class="history-chart-wrap">
+            <canvas id="historyChart"></canvas>
+            <p class="history-chart-empty" id="historyChartEmpty">분석을 완료하면 점수 추이가 표시됩니다</p>
+          </div>
+          <div class="score-legend-row">
+            <p class="score-row" id="contentCoverageRow">
+              <span class="score-legend-dot" style="background:#4f95ff"></span>내용 전달력: <span id="contentCoverageScore">-</span><span class="reliability-badge" id="reliabilityBadge" hidden></span>
+            </p>
+            <p class="reliability-note" id="reliabilityNote" hidden></p>
+            <p><span class="score-legend-dot" style="background:#34c88a"></span>전달 안정성: <span id="deliveryStabilityScore">-</span></p>
+            <p><span class="score-legend-dot" style="background:#ff9f43"></span>발표 속도: <span id="pacingScore">-</span></p>
+          </div>
         </div>
 
         <div
@@ -123,7 +126,6 @@
           <ul id="strengthsList">
             <li>강점 데이터가 아직 없습니다.</li>
           </ul>
-          <button type="button" id="practiceModeButton" disabled>연습모드</button>
         </div>
       </section>
 
@@ -187,6 +189,93 @@
     </div>
   </div>
 
+  <!-- 파일 업로드 안내 모달 -->
+  <div class="welcome-modal-backdrop" id="welcomeModalBackdrop">
+    <div class="welcome-modal">
+      <button class="welcome-modal-close" id="closeWelcomeModal">×</button>
+
+      <div class="welcome-modal-header">
+        <div class="welcome-modal-logo">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="10" fill="url(#wg)"/>
+            <path d="M12 20c0 3.314 2.686 6 6 6s6-2.686 6-6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <rect x="14" y="10" width="8" height="12" rx="4" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="1.5"/>
+            <line x1="18" y1="26" x2="18" y2="30" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <defs><linearGradient id="wg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#4f95ff"/><stop offset="1" stop-color="#a084ee"/>
+            </linearGradient></defs>
+          </svg>
+        </div>
+        <h2 class="welcome-modal-title">발표 분석을 시작해보세요</h2>
+        <p class="welcome-modal-subtitle">발표 문서와 음성 파일을 업로드하면<br>AI가 3가지 핵심 지표로 분석합니다</p>
+      </div>
+
+      <div class="welcome-upload-grid">
+        <div class="welcome-upload-zone" id="welcomeDocZone">
+          <div class="welcome-upload-zone-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect x="4" y="2" width="16" height="20" rx="3" fill="#e8f0ff" stroke="#4f95ff" stroke-width="1.5"/>
+              <rect x="8" y="24" width="16" height="20" rx="3" fill="#d4e6ff" stroke="#4f95ff" stroke-width="1.5" transform="translate(0,-2)"/>
+              <path d="M8 9h8M8 13h5" stroke="#4f95ff" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M17 2v5h5" stroke="#4f95ff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="welcome-upload-label">발표 문서</p>
+          <p class="welcome-upload-type">PDF</p>
+          <p class="welcome-upload-desc">슬라이드 내용을 AI가 파악해<br>내용 전달력을 측정합니다</p>
+          <span class="welcome-file-chip" id="welcomeDocName"></span>
+        </div>
+
+        <div class="welcome-upload-zone" id="welcomeAudioZone">
+          <div class="welcome-upload-zone-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="14" fill="#f0eaff"/>
+              <rect x="10" y="6" width="8" height="11" rx="4" fill="#e0d4ff" stroke="#a084ee" stroke-width="1.5"/>
+              <path d="M7 16c0 3.866 3.134 7 7 7s7-3.134 7-7" stroke="#a084ee" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="14" y1="23" x2="14" y2="26" stroke="#a084ee" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="welcome-upload-label">발표 음성</p>
+          <p class="welcome-upload-type">MP3 · WAV · M4A</p>
+          <p class="welcome-upload-desc">STT로 변환 후 음성 안정성과<br>발표 속도를 분석합니다</p>
+          <span class="welcome-file-chip" id="welcomeAudioName"></span>
+        </div>
+      </div>
+
+      <div class="welcome-metrics">
+        <p class="welcome-metrics-label">분석 결과로 확인할 수 있는 것</p>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#4f95ff"></span>
+          <div>
+            <strong>내용 전달력</strong>
+            <span>슬라이드 내용을 얼마나 말로 전달했는지</span>
+          </div>
+        </div>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#34c88a"></span>
+          <div>
+            <strong>전달 안정성</strong>
+            <span>음성이 흔들림 없이 안정적으로 전달됐는지</span>
+          </div>
+        </div>
+        <div class="welcome-metric-item">
+          <span class="welcome-metric-dot" style="background:#ff9f43"></span>
+          <div>
+            <strong>발표 속도</strong>
+            <span>WPM 기반 적절한 발표 속도인지</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="welcome-modal-actions">
+        <button class="welcome-skip-btn" id="welcomeSkipBtn">나중에 업로드</button>
+        <button class="welcome-start-btn" id="welcomeStartBtn" disabled>분석 시작하기 →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script type="module" src="./js/analysis.js"></script>
 </body>
 </html>

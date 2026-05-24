@@ -2,6 +2,7 @@ import {
   fetchNoteDetail as fetchNoteDetailService,
   fetchAnalysisResult as fetchAnalysisResultService,
   fetchLatestAnalysisResult as fetchLatestAnalysisResultService,
+  fetchAnalysisHistory as fetchAnalysisHistoryService,
   pollAnalysisStatus as pollAnalysisStatusService,
   requestChatReply as requestChatReplyService,
   runAnalysis as runAnalysisService,
@@ -11,12 +12,20 @@ import {
   setButtonDisabled,
   renderAttachedFileChip,
   renderDocumentPreview,
+  renderDocumentPreviewLoading,
+  navigatePdfToPage,
   addMessageToChat,
+  addQuickReplies,
   updateAnalysisStatusMessage,
   clearAnalysisStatusMessage,
   getSelectedAttachments,
   clearSelectedFiles,
   renderEmptyResult,
+  renderHistoryChart,
+  createAnalysisProgressBubble,
+  updateAnalysisProgressBubble,
+  finishAnalysisProgressBubble,
+  removeAnalysisProgressBubble,
 } from "./analysis-render.js";
 import { setupDragAndDrop, bindInputListeners } from "./analysis-chat.js";
 import { initPracticeMode, openPracticeModal } from "./practice-mode.js";
@@ -52,7 +61,12 @@ const elements = {
   attachFileButton: document.getElementById("attachFileButton"),
   runAnalysisButton: document.getElementById("runAnalysisButton"),
   practiceModeButton: document.getElementById("practiceModeButton"),
+  historyChartElement: document.getElementById("historyChart"),
+  historyChartEmptyElement: document.getElementById("historyChartEmpty"),
   contentCoverageElement: document.getElementById("contentCoverageScore"),
+  contentCoverageRowElement: document.getElementById("contentCoverageRow"),
+  reliabilityBadgeElement: document.getElementById("reliabilityBadge"),
+  reliabilityNoteElement: document.getElementById("reliabilityNote"),
   deliveryStabilityElement: document.getElementById("deliveryStabilityScore"),
   pacingScoreElement: document.getElementById("pacingScore"),
   summaryElement: document.getElementById("analysisSummary"),
@@ -64,7 +78,13 @@ const elements = {
 };
 
 let analysisStatusMessage = null;
+let analysisProgressBubble = null;
 let documentUploadId = null;
+let sectionAudio = null;
+let sectionAudioBlobUrl = null;
+let isAudioLoading = false;
+let activeSectionRef = null;
+let activePlayerElRef = null;
 let audioUploadId = null;
 let analysisId = null;
 let pollingTimer = null;
@@ -74,6 +94,173 @@ let chatSessionId = null;
 let isBusy = false;
 let busyMode = null;
 let chatAbortController = null;
+let analysisHistory = [];
+let selectedHistoryIndex = null;
+let hasAnalysisResult = false;
+let postAnalysisChipsShown = false;
+
+const PRE_ANALYSIS_CHIPS = ["SpeechPT가 뭘 분석해주나요?", "어떤 파일을 업로드해야 하나요?"];
+const PRE_ANALYSIS_FIXED = {
+  "SpeechPT가 뭘 분석해주나요?":
+    "SpeechPT는 발표 문서(PDF)와 음성 파일을 함께 분석해 3가지 핵심 지표를 제공합니다.\n\n• 내용 전달력: 슬라이드 내용을 얼마나 말로 전달했는지\n• 전달 안정성: 음성이 흔들림 없이 안정적으로 전달됐는지\n• 발표 속도: WPM 기반 적절한 발표 속도인지",
+  "어떤 파일을 업로드해야 하나요?":
+    "두 가지 파일이 필요해요!\n\n• 발표 문서: PDF 형식\n• 발표 음성: MP3, WAV, M4A 형식\n\n채팅창 하단 📎 버튼을 누르거나 파일을 드래그&드롭 해보세요.",
+};
+const POST_ANALYSIS_CHIPS = [
+  "가장 개선이 필요한 부분은?",
+  "전달 안정성을 높이려면?",
+  "발표 속도 조절 방법",
+  "슬라이드별 상세 피드백",
+];
+
+function showWelcomeChatMessage() {
+  const chat = elements.chatBodyElement;
+  if (!chat) return;
+  addMessageToChat(
+    chat,
+    "안녕하세요! SpeechPT 분석 도우미입니다.\n발표 문서(PDF)와 음성 파일을 업로드하면 내용 전달력, 전달 안정성, 발표 속도를 분석해드립니다.\n\n아래 질문을 눌러보거나, 파일을 업로드하고 분석을 시작해보세요!",
+    false,
+    []
+  );
+  addQuickReplies(chat, PRE_ANALYSIS_CHIPS, handlePreAnalysisChipClick);
+}
+
+function handlePreAnalysisChipClick(text) {
+  const chat = elements.chatBodyElement;
+  addMessageToChat(chat, text, true, []);
+  const answer = PRE_ANALYSIS_FIXED[text] ?? "분석을 먼저 완료하면 더 자세히 답변해드릴 수 있어요!";
+  addMessageToChat(chat, answer, false, []);
+  addQuickReplies(chat, PRE_ANALYSIS_CHIPS, handlePreAnalysisChipClick);
+}
+
+function showPostAnalysisChips() {
+  if (postAnalysisChipsShown || !elements.chatBodyElement) return;
+  postAnalysisChipsShown = true;
+  addMessageToChat(elements.chatBodyElement, "분석 결과에 대해 궁금한 점을 질문해보세요!", false, []);
+  addQuickReplies(elements.chatBodyElement, POST_ANALYSIS_CHIPS, (text) => submitChatQuestion(text));
+}
+
+function showWelcomeModal() {
+  const backdrop = document.getElementById("welcomeModalBackdrop");
+  if (!backdrop) return;
+  backdrop.classList.add("active");
+
+  const docZone = document.getElementById("welcomeDocZone");
+  const audioZone = document.getElementById("welcomeAudioZone");
+  const docNameEl = document.getElementById("welcomeDocName");
+  const audioNameEl = document.getElementById("welcomeAudioName");
+  const startBtn = document.getElementById("welcomeStartBtn");
+
+  function updateStartBtn() {
+    const hasDoc = Boolean(elements.documentInput?.files?.[0]);
+    const hasAudio = Boolean(elements.audioInput?.files?.[0]);
+    if (startBtn) startBtn.disabled = !(hasDoc && hasAudio);
+  }
+
+  function onDocChange() {
+    const file = elements.documentInput?.files?.[0];
+    if (docNameEl) docNameEl.textContent = file ? file.name : "";
+    docZone?.classList.toggle("has-file", Boolean(file));
+    updateStartBtn();
+  }
+
+  function onAudioChange() {
+    const file = elements.audioInput?.files?.[0];
+    if (audioNameEl) audioNameEl.textContent = file ? file.name : "";
+    audioZone?.classList.toggle("has-file", Boolean(file));
+    updateStartBtn();
+  }
+
+  docZone?.addEventListener("click", () => elements.documentInput?.click());
+  audioZone?.addEventListener("click", () => elements.audioInput?.click());
+  elements.documentInput?.addEventListener("change", onDocChange);
+  elements.audioInput?.addEventListener("change", onAudioChange);
+
+  function setupWelcomeDropZone(zone, input) {
+    zone?.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone?.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("drag-over");
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change"));
+    });
+  }
+  setupWelcomeDropZone(docZone, elements.documentInput);
+  setupWelcomeDropZone(audioZone, elements.audioInput);
+
+  function closeModal() {
+    backdrop.classList.remove("active");
+  }
+
+  document.getElementById("closeWelcomeModal")?.addEventListener("click", closeModal);
+  document.getElementById("welcomeSkipBtn")?.addEventListener("click", closeModal);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeModal(); });
+
+  startBtn?.addEventListener("click", async () => {
+    closeModal();
+    await runAnalysis();
+  });
+
+  showWelcomeChatMessage();
+}
+
+async function loadHistoryChart(autoSelectLatest = false) {
+  analysisHistory = await fetchAnalysisHistoryService(noteId);
+  if (autoSelectLatest && analysisHistory.length > 0) {
+    selectedHistoryIndex = analysisHistory.length - 1;
+  }
+  renderHistoryChart(
+    elements.historyChartElement,
+    elements.historyChartEmptyElement,
+    analysisHistory,
+    selectedHistoryIndex,
+    onHistoryPointClick,
+  );
+}
+
+async function onHistoryPointClick(index, clickedAnalysisId) {
+  selectedHistoryIndex = index;
+  renderHistoryChart(
+    elements.historyChartElement,
+    elements.historyChartEmptyElement,
+    analysisHistory,
+    selectedHistoryIndex,
+    onHistoryPointClick,
+  );
+  await fetchAnalysisResultService({
+    analysisId: clickedAnalysisId,
+    elements,
+    updateNotice,
+    updateAnalysisChatStatus,
+    updateAnalysisProgress: null,
+    setButtonDisabled,
+    onSectionPlay: playSectionInPanel,
+    onComplete: (scores) => { latestAnalysisScores = scores; },
+    onTranscriptClick: goToSlide,
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
+    onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
+      revokeSectionAudio();
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
+  });
+}
 
 async function saveChatMessageToServer(role, content) {
   if (!chatSessionId) return;
@@ -266,6 +453,131 @@ function revokeDocumentPreviewUrl() {
   documentPreviewUrl = null;
 }
 
+function goToSlide(slideIndex) {
+  navigatePdfToPage(slideIndex);
+}
+
+function revokeSectionAudio() {
+  if (sectionAudio) {
+    sectionAudio.pause();
+  }
+  if (sectionAudioBlobUrl) {
+    URL.revokeObjectURL(sectionAudioBlobUrl);
+    sectionAudioBlobUrl = null;
+  }
+}
+
+function _fmtTime(sec) {
+  const total = Math.max(0, Math.floor(sec));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function playSectionInPanel(section, playerEl) {
+  activeSectionRef = section;
+  activePlayerElRef = playerEl;
+  playerEl.innerHTML = "";
+
+  if (!sectionAudioBlobUrl || !sectionAudio) {
+    const wrap = document.createElement("div");
+    wrap.className = "section-player-no-audio";
+    if (isAudioLoading) {
+      wrap.classList.add("is-loading");
+      const dots = document.createElement("div");
+      dots.className = "section-player-loading-dots";
+      for (let i = 0; i < 3; i++) {
+        const d = document.createElement("span");
+        dots.appendChild(d);
+      }
+      const label = document.createElement("span");
+      label.textContent = "음성 파일 불러오는 중...";
+      wrap.append(dots, label);
+    } else {
+      wrap.textContent = "재생하려면 음성 파일을 다시 업로드해주세요.";
+    }
+    playerEl.appendChild(wrap);
+    return;
+  }
+
+  sectionAudio.pause();
+
+  const startTime = section.start_time_sec ?? 0;
+  const endTime = section.end_time_sec ?? startTime;
+  const duration = Math.max(0, endTime - startTime);
+
+  const controls = document.createElement("div");
+  controls.className = "section-player-controls";
+
+  const playBtn = document.createElement("button");
+  playBtn.type = "button";
+  playBtn.className = "section-play-btn";
+  playBtn.textContent = "▶";
+
+  const trackWrap = document.createElement("div");
+  trackWrap.className = "section-player-track-wrap";
+
+  const progress = document.createElement("input");
+  progress.type = "range";
+  progress.className = "section-player-progress";
+  progress.min = "0";
+  progress.max = "100";
+  progress.value = "0";
+  progress.step = "0.1";
+
+  const timeLabel = document.createElement("span");
+  timeLabel.className = "section-player-time";
+  timeLabel.textContent = `0:00 / ${_fmtTime(duration)}`;
+
+  trackWrap.appendChild(progress);
+  controls.append(playBtn, trackWrap, timeLabel);
+
+  playerEl.append(controls);
+
+  let isPlaying = false;
+  let timeupdateHandler = null;
+
+  function stopPlayback() {
+    sectionAudio.pause();
+    isPlaying = false;
+    playBtn.textContent = "▶";
+    if (timeupdateHandler) {
+      sectionAudio.removeEventListener("timeupdate", timeupdateHandler);
+      timeupdateHandler = null;
+    }
+  }
+
+  timeupdateHandler = () => {
+    const pos = Math.max(0, sectionAudio.currentTime - startTime);
+    const pct = duration > 0 ? Math.min((pos / duration) * 100, 100) : 0;
+    progress.value = String(pct);
+    timeLabel.textContent = `${_fmtTime(pos)} / ${_fmtTime(duration)}`;
+    if (sectionAudio.currentTime >= endTime) {
+      stopPlayback();
+    }
+  };
+
+  playBtn.addEventListener("click", () => {
+    if (isPlaying) {
+      stopPlayback();
+    } else {
+      if (sectionAudio.currentTime < startTime || sectionAudio.currentTime >= endTime) {
+        sectionAudio.currentTime = startTime;
+      }
+      sectionAudio.addEventListener("timeupdate", timeupdateHandler);
+      sectionAudio.play();
+      isPlaying = true;
+      playBtn.textContent = "⏸";
+    }
+  });
+
+  progress.addEventListener("input", () => {
+    sectionAudio.currentTime = startTime + (Number(progress.value) / 100) * duration;
+  });
+
+  sectionAudio.currentTime = startTime;
+}
+
 function updateDocumentPreview(file) {
   revokeDocumentPreviewUrl();
 
@@ -337,25 +649,6 @@ function getStageLabel(stage) {
   return labels[stage] || stage;
 }
 
-function getAnimatedDots(progress) {
-  if (typeof progress !== "number" || Number.isNaN(progress)) {
-    return "...";
-  }
-  const dotCount = ((Math.floor(progress / 10) % 3) + 1);
-  return ".".repeat(dotCount);
-}
-
-function getAnalysisStatusText(stage, progress) {
-  if (stage === "finished" || progress === 100) {
-    return "모델 분석이 완료되었습니다. 결과를 확인해주세요.";
-  }
-
-  const stageLabel = getStageLabel(stage);
-  const dots = getAnimatedDots(progress);
-  const progressText = typeof progress === "number" ? `${Math.min(Math.max(progress, 0), 100)}%` : "진행률 계산 중";
-  return `모델이 ${stageLabel} 중${dots} 현재 ${progressText} 진행 중입니다.`;
-}
-
 function updateAnalysisProgress(stage, progress, meta) {
   // meta: { icon, text, etaText, elapsedText, warningMsg } (선택)
   let statusText;
@@ -383,6 +676,7 @@ function updateAnalysisChatStatus(text) {
 
 function resetAnalysisChatStatus() {
   analysisStatusMessage = clearAnalysisStatusMessage(analysisStatusMessage);
+  analysisProgressBubble = removeAnalysisProgressBubble(analysisProgressBubble);
 }
 
 function removeAttachedFile(kind) {
@@ -397,6 +691,7 @@ function removeAttachedFile(kind) {
   if (kind === "audio") {
     elements.audioInput.files = dt.files;
     audioUploadId = null;
+    revokeSectionAudio();
   }
 
   renderAttachedFileChip(elements.attachedFilesContainer, kind, null, removeAttachedFile);
@@ -410,6 +705,12 @@ function onFileChanged(kind, file) {
 
   if (kind === "audio") {
     audioUploadId = null;
+    revokeSectionAudio();
+    if (file) {
+      sectionAudioBlobUrl = URL.createObjectURL(file);
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = sectionAudioBlobUrl;
+    }
   }
 
   renderAttachedFileChip(elements.attachedFilesContainer, kind, file, removeAttachedFile);
@@ -424,9 +725,31 @@ async function fetchAnalysisResult() {
     updateAnalysisChatStatus,
     updateAnalysisProgress,
     setButtonDisabled,
+    onSectionPlay: playSectionInPanel,
     onComplete: (scores) => {
       setButtonDisabled(elements.practiceModeButton, false);
       latestAnalysisScores = scores;
+      hasAnalysisResult = true;
+      loadHistoryChart(true);
+      showPostAnalysisChips();
+    },
+    onTranscriptClick: goToSlide,
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
+    onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
+      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
     },
   });
 }
@@ -473,7 +796,6 @@ async function runAnalysis() {
     }
 
     analysisId = result.analysisId;
-    updateAnalysisChatStatus(result.statusText);
 
     if (pollingTimer) {
       window.clearInterval(pollingTimer);
@@ -493,6 +815,16 @@ async function runAnalysis() {
 
 async function submitChatQuestion(message) {
   addMessageToChat(elements.chatBodyElement, message, true, []);
+
+  // 분석 완료 전: 고정 응답 반환
+  if (!hasAnalysisResult) {
+    const answer = PRE_ANALYSIS_FIXED[message] ??
+      "분석을 먼저 완료해야 자세한 답변이 가능해요. 파일을 업로드하고 분석을 실행해보세요!";
+    addMessageToChat(elements.chatBodyElement, answer, false, []);
+    addQuickReplies(elements.chatBodyElement, PRE_ANALYSIS_CHIPS, handlePreAnalysisChipClick);
+    return;
+  }
+
   setBusyState(true, "chat");
   chatAbortController = new AbortController();
 
@@ -618,12 +950,44 @@ function initAnalysisPage() {
     noteId,
     elements,
     updateNotice,
+    onNoResult: showWelcomeModal,
+    onSectionPlay: playSectionInPanel,
+    onTranscriptClick: goToSlide,
     onComplete: (scores) => {
       setButtonDisabled(elements.practiceModeButton, false);
       latestAnalysisScores = scores;
+      hasAnalysisResult = true;
+      showPostAnalysisChips();
+    },
+    onDocumentLoadStart: () => renderDocumentPreviewLoading(elements.documentPreviewElement),
+    onAudioLoadStart: (loading = true) => {
+      isAudioLoading = loading;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
+    },
+    onAudioRestored: (blobUrl) => {
+      isAudioLoading = false;
+      if (sectionAudioBlobUrl) { URL.revokeObjectURL(blobUrl); return; }
+      sectionAudioBlobUrl = blobUrl;
+      if (!sectionAudio) sectionAudio = new Audio();
+      sectionAudio.src = blobUrl;
+      if (activePlayerElRef?.classList.contains("is-open") && activeSectionRef) {
+        playSectionInPanel(activeSectionRef, activePlayerElRef);
+      }
     },
   });
+
+  loadHistoryChart(true);
 }
 
-document.addEventListener("DOMContentLoaded", initAnalysisPage);
-window.addEventListener("beforeunload", revokeDocumentPreviewUrl);
+document.addEventListener("DOMContentLoaded", () => {
+  initAnalysisPage();
+  document.getElementById("logoHome")?.addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+});
+window.addEventListener("beforeunload", () => {
+  revokeDocumentPreviewUrl();
+  revokeSectionAudio();
+});
