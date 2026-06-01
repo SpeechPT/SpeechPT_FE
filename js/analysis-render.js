@@ -356,6 +356,105 @@ export function renderDocumentPreview(container, file, previewUrl) {
   `;
 }
 
+/**
+ * 안전한 미니 마크다운 → HTML 렌더링.
+ * 어시스턴트 답변에만 사용. 외부 라이브러리 의존 없음.
+ * 지원: **굵게**, *기울임*, `inline code`, - / * 불릿, 1. 번호 리스트, 빈 줄 단락 분리, [텍스트](url).
+ * XSS 방어: 모든 사용자/LLM 텍스트는 일단 escape → 화이트리스트 패턴만 인라인 HTML로 치환.
+ */
+function escapeHtml(s) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderInlineMarkdown(escapedText) {
+  // 입력은 이미 escape된 안전한 문자열. inline 패턴만 HTML로 변환.
+  let s = escapedText;
+  // [text](url) — http(s) URL만 허용
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => {
+    return `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+  });
+  // **bold** (중첩 방지 위해 lazy)
+  s = s.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+  // *italic* (단, 단어 사이만)
+  s = s.replace(/(?<!\w)\*([^*\n]+?)\*(?!\w)/g, "<em>$1</em>");
+  // `code`
+  s = s.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+  return s;
+}
+
+function renderMarkdown(text) {
+  if (!text) return "";
+  const escaped = escapeHtml(text);
+  const lines = escaped.split(/\r?\n/);
+
+  const out = [];
+  let buf = [];
+  let listType = null; // "ul" | "ol" | null
+  let listItems = [];
+
+  const flushParagraph = () => {
+    if (buf.length === 0) return;
+    const inner = buf.join(" ").trim();
+    if (inner) out.push(`<p>${renderInlineMarkdown(inner)}</p>`);
+    buf = [];
+  };
+
+  const flushList = () => {
+    if (!listType) return;
+    const tag = listType;
+    out.push(
+      `<${tag}>` +
+        listItems.map((it) => `<li>${renderInlineMarkdown(it)}</li>`).join("") +
+        `</${tag}>`,
+    );
+    listType = null;
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\s+$/, "");
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const ulMatch = line.match(/^\s*[-*]\s+(.*)$/);
+    const olMatch = line.match(/^\s*\d+\.\s+(.*)$/);
+
+    if (ulMatch) {
+      flushParagraph();
+      if (listType !== "ul") flushList();
+      listType = "ul";
+      listItems.push(ulMatch[1]);
+      continue;
+    }
+    if (olMatch) {
+      flushParagraph();
+      if (listType !== "ol") flushList();
+      listType = "ol";
+      listItems.push(olMatch[1]);
+      continue;
+    }
+
+    // 일반 텍스트: 리스트가 열려 있으면 그 마지막 항목에 줄바꿈 합류, 아니면 단락 버퍼
+    if (listType) {
+      listItems[listItems.length - 1] += " " + line.trim();
+    } else {
+      buf.push(line.trim());
+    }
+  }
+  flushParagraph();
+  flushList();
+
+  return out.join("");
+}
+
 export function addMessageToChat(chatBodyElement, text, isUser = false, attachments = [], options = {}) {
   if (!chatBodyElement || (!text.trim() && attachments.length === 0)) {
     return;
@@ -366,7 +465,14 @@ export function addMessageToChat(chatBodyElement, text, isUser = false, attachme
 
   if (text.trim()) {
     const contentLine = document.createElement("div");
-    contentLine.textContent = text;
+    contentLine.className = isUser ? "chat-content" : "chat-content markdown";
+    if (isUser) {
+      // 사용자 입력은 그대로 (XSS 방지를 위해 textContent 사용)
+      contentLine.textContent = text;
+    } else {
+      // 어시스턴트 답변은 마크다운 렌더링
+      contentLine.innerHTML = renderMarkdown(text);
+    }
     message.appendChild(contentLine);
   }
 
