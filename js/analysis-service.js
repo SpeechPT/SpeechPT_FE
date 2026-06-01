@@ -165,6 +165,17 @@ export async function requestChatReply(sessionId, question, signal = null) {
   });
 }
 
+export async function fetchChatSuggestions(noteId) {
+  if (!noteId) return [];
+  try {
+    const data = await fetchJson(`${API_BASE_URL}/notes/${noteId}/chat/suggestions`);
+    return data?.items ?? [];
+  } catch (err) {
+    console.error("추천 질문 로드 실패:", err);
+    return [];
+  }
+}
+
 export async function fetchAnalysisHistory(noteId) {
   if (!noteId) return [];
   try {

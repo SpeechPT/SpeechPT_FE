@@ -5,6 +5,7 @@ import {
   fetchAnalysisHistory as fetchAnalysisHistoryService,
   pollAnalysisStatus as pollAnalysisStatusService,
   requestChatReply as requestChatReplyService,
+  fetchChatSuggestions,
   runAnalysis as runAnalysisService,
 } from "./analysis-service.js";
 import {
@@ -133,11 +134,21 @@ function handlePreAnalysisChipClick(text) {
   addQuickReplies(chat, PRE_ANALYSIS_CHIPS, handlePreAnalysisChipClick);
 }
 
-function showPostAnalysisChips() {
+async function showPostAnalysisChips() {
   if (postAnalysisChipsShown || !elements.chatBodyElement) return;
   postAnalysisChipsShown = true;
   addMessageToChat(elements.chatBodyElement, "분석 결과에 대해 궁금한 점을 질문해보세요!", false, []);
-  addQuickReplies(elements.chatBodyElement, POST_ANALYSIS_CHIPS, (text) => submitChatQuestion(text));
+
+  let chips = POST_ANALYSIS_CHIPS;
+  try {
+    const suggestions = await fetchChatSuggestions(noteId);
+    if (Array.isArray(suggestions) && suggestions.length > 0) {
+      chips = suggestions.map((s) => s.question);
+    }
+  } catch (err) {
+    console.warn("추천 질문 로드 실패, 기본 chips 사용:", err);
+  }
+  addQuickReplies(elements.chatBodyElement, chips, (text) => submitChatQuestion(text));
 }
 
 function showWelcomeModal() {
@@ -287,7 +298,7 @@ async function initChatSession() {
   try {
     const data = await fetchJson(`${API_BASE_URL}/notes/${noteId}/chat`);
     chatSessionId = data.session_id;
-    data.messages.forEach(({ role, content }) => {
+    data.messages.forEach(({ role, content, citations }) => {
       let text = content;
       let attachments = [];
       try {
@@ -295,7 +306,14 @@ async function initChatSession() {
         text = parsed.text ?? content;
         attachments = parsed.attachments ?? [];
       } catch (_) {}
-      addMessageToChat(elements.chatBodyElement, text, role === "user", attachments);
+      addMessageToChat(elements.chatBodyElement, text, role === "user", attachments, {
+        citations: Array.isArray(citations) ? citations : [],
+        onCitationClick: (cite) => {
+          if (cite?.slide_id != null) {
+            goToSlide(cite.slide_id);
+          }
+        },
+      });
     });
   } catch (err) {
     console.error("채팅 세션 로드 실패:", err);
@@ -842,7 +860,14 @@ async function submitChatQuestion(message) {
 
   try {
     const reply = await requestChatReplyService(chatSessionId, message, chatAbortController.signal);
-    addMessageToChat(elements.chatBodyElement, reply.answer, false, []);
+    addMessageToChat(elements.chatBodyElement, reply.answer, false, [], {
+      citations: reply.citations || [],
+      onCitationClick: (cite) => {
+        if (cite?.slide_id != null) {
+          goToSlide(cite.slide_id);
+        }
+      },
+    });
   } catch (error) {
     if (error?.name === "AbortError") {
       addMessageToChat(

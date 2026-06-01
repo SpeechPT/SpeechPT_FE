@@ -356,7 +356,7 @@ export function renderDocumentPreview(container, file, previewUrl) {
   `;
 }
 
-export function addMessageToChat(chatBodyElement, text, isUser = false, attachments = []) {
+export function addMessageToChat(chatBodyElement, text, isUser = false, attachments = [], options = {}) {
   if (!chatBodyElement || (!text.trim() && attachments.length === 0)) {
     return;
   }
@@ -386,6 +386,34 @@ export function addMessageToChat(chatBodyElement, text, isUser = false, attachme
     });
 
     message.appendChild(attachmentBlock);
+  }
+
+  const citations = options.citations || [];
+  if (!isUser && citations.length > 0) {
+    const chipBox = document.createElement("div");
+    chipBox.className = "chat-citations";
+
+    citations.forEach((cite) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chat-citation-chip";
+      const parts = [`[${cite.marker}]`];
+      if (cite.attempt_index) parts.push(`${cite.attempt_index}차`);
+      if (cite.slide_id != null) parts.push(`슬라이드 ${cite.slide_id}`);
+      if (cite.start_sec != null) {
+        const s = cite.start_sec;
+        parts.push(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`);
+      }
+      chip.textContent = parts.join(" · ");
+      if (cite.slide_id != null && typeof options.onCitationClick === "function") {
+        chip.addEventListener("click", () => options.onCitationClick(cite));
+      } else {
+        chip.disabled = true;
+      }
+      chipBox.appendChild(chip);
+    });
+
+    message.appendChild(chipBox);
   }
 
   chatBodyElement.appendChild(message);

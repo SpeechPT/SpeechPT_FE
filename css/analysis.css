@@ -704,6 +704,32 @@
   padding-left: 0;
 }
 
+.chat-citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chat-citation-chip {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border: 1px solid rgba(80, 100, 200, 0.4);
+  border-radius: 12px;
+  background: rgba(80, 100, 200, 0.08);
+  color: #2740a0;
+  cursor: pointer;
+}
+
+.chat-citation-chip:hover:not(:disabled) {
+  background: rgba(80, 100, 200, 0.18);
+}
+
+.chat-citation-chip:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
